@@ -32,6 +32,24 @@ def test_parse_purl_pypi():
     assert ver == "2.28.0"
 
 
+def test_parse_purl_golang():
+    eco, name, ver = parse_purl(
+        "pkg:golang/github.com/gin-gonic/gin@1.9.1"
+    )
+    assert eco == "golang"
+    assert name == "github.com/gin-gonic/gin"
+    assert ver == "1.9.1"
+
+
+def test_parse_purl_golang_stdlib():
+    eco, name, ver = parse_purl(
+        "pkg:golang/golang.org/x/text@0.3.7"
+    )
+    assert eco == "golang"
+    assert name == "golang.org/x/text"
+    assert ver == "0.3.7"
+
+
 def test_parse_cyclonedx_json_components():
     ctx = TriageContext(sbom_path=FIXTURES / "cyclonedx_sample.json")
     ctx = parse(ctx)
