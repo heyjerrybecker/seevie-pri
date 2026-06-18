@@ -1,0 +1,93 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "my-app",
+      "name": "my-application",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "starter-web",
+      "group": "org.springframework.boot",
+      "name": "spring-boot-starter-web",
+      "version": "2.6.5",
+      "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-web@2.6.5"
+    },
+    {
+      "type": "library",
+      "bom-ref": "spring-webmvc",
+      "group": "org.springframework",
+      "name": "spring-webmvc",
+      "version": "5.3.17",
+      "purl": "pkg:maven/org.springframework/spring-webmvc@5.3.17"
+    },
+    {
+      "type": "library",
+      "bom-ref": "spring-beans",
+      "group": "org.springframework",
+      "name": "spring-beans",
+      "version": "5.3.17",
+      "purl": "pkg:maven/org.springframework/spring-beans@5.3.17"
+    },
+    {
+      "type": "library",
+      "bom-ref": "log4j-core",
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-core",
+      "version": "2.14.1",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "log4j-api",
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-api",
+      "version": "2.14.1",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-api@2.14.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "jackson-databind",
+      "group": "com.fasterxml.jackson.core",
+      "name": "jackson-databind",
+      "version": "2.13.2",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.2"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "my-app",
+      "dependsOn": ["starter-web", "log4j-core", "jackson-databind"]
+    },
+    {
+      "ref": "starter-web",
+      "dependsOn": ["spring-webmvc"]
+    },
+    {
+      "ref": "spring-webmvc",
+      "dependsOn": ["spring-beans"]
+    },
+    {
+      "ref": "spring-beans",
+      "dependsOn": []
+    },
+    {
+      "ref": "log4j-core",
+      "dependsOn": ["log4j-api"]
+    },
+    {
+      "ref": "log4j-api",
+      "dependsOn": []
+    },
+    {
+      "ref": "jackson-databind",
+      "dependsOn": []
+    }
+  ]
+}
