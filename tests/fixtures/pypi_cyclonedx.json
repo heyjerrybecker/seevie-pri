@@ -1,0 +1,65 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "my-service",
+      "name": "my-service",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "flask",
+      "name": "flask",
+      "version": "2.2.0",
+      "purl": "pkg:pypi/flask@2.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "jinja2",
+      "name": "jinja2",
+      "version": "2.11.3",
+      "purl": "pkg:pypi/jinja2@2.11.3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "requests",
+      "name": "requests",
+      "version": "2.28.0",
+      "purl": "pkg:pypi/requests@2.28.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pyyaml",
+      "name": "pyyaml",
+      "version": "6.0",
+      "purl": "pkg:pypi/pyyaml@6.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "my-service",
+      "dependsOn": ["flask", "requests", "pyyaml"]
+    },
+    {
+      "ref": "flask",
+      "dependsOn": ["jinja2"]
+    },
+    {
+      "ref": "jinja2",
+      "dependsOn": []
+    },
+    {
+      "ref": "requests",
+      "dependsOn": []
+    },
+    {
+      "ref": "pyyaml",
+      "dependsOn": []
+    }
+  ]
+}
