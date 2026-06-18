@@ -1,0 +1,65 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "my-web-app",
+      "name": "my-web-app",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "express",
+      "name": "express",
+      "version": "4.18.2",
+      "purl": "pkg:npm/express@4.18.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "qs",
+      "name": "qs",
+      "version": "6.11.0",
+      "purl": "pkg:npm/qs@6.11.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "lodash",
+      "name": "lodash",
+      "version": "4.17.20",
+      "purl": "pkg:npm/lodash@4.17.20"
+    },
+    {
+      "type": "library",
+      "bom-ref": "axios",
+      "name": "axios",
+      "version": "1.6.0",
+      "purl": "pkg:npm/axios@1.6.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "my-web-app",
+      "dependsOn": ["express", "lodash", "axios"]
+    },
+    {
+      "ref": "express",
+      "dependsOn": ["qs"]
+    },
+    {
+      "ref": "qs",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash",
+      "dependsOn": []
+    },
+    {
+      "ref": "axios",
+      "dependsOn": []
+    }
+  ]
+}
