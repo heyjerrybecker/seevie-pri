@@ -92,6 +92,11 @@ def _fetch_osv_detail(vuln_id: str) -> dict | None:
 
 
 def _extract_severity(detail: dict) -> str:
+    # Top-level database_specific (GHSA advisories store severity here)
+    sev = detail.get("database_specific", {}).get("severity")
+    if sev:
+        return sev
+    # Fall back to affected[].database_specific or ecosystem_specific
     for affected in detail.get("affected", []):
         for key in ("database_specific", "ecosystem_specific"):
             sev = affected.get(key, {}).get("severity")

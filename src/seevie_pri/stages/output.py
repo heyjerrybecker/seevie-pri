@@ -61,40 +61,51 @@ def format_table(ctx: TriageContext) -> str:
     buf = StringIO()
     console = Console(file=buf, no_color=False, width=120)
 
-    by_cve: dict[str, list] = {}
+    by_component: dict[str, list] = {}
     for finding in ctx.rankings:
-        cve_id = finding.scored.match.cve_id
-        by_cve.setdefault(cve_id, []).append(finding)
+        comp_name = finding.scored.match.affected_component.name
+        by_component.setdefault(comp_name, []).append(finding)
 
-    for cve_id, findings in by_cve.items():
-        severity = findings[0].scored.match.severity
-        affected_name = findings[0].scored.match.affected_component.name
-        fixed = findings[0].scored.match.fixed_version or "unknown"
+    for comp_name, findings in by_component.items():
+        comp = findings[0].scored.match.affected_component
+        worst_severity = _worst_severity([f.scored.match.severity for f in findings])
 
-        console.print(f"\n[bold]{cve_id}[/bold] — [red]{severity}[/red]")
-        console.print(f"  Affected: {affected_name} < {fixed}\n")
+        console.print(f"\n[bold]{comp_name}[/bold] @ {comp.version} — [red]{worst_severity}[/red]")
+        console.print(f"  {len(findings)} CVE(s) affecting this component\n")
 
         table = Table(show_header=True, header_style="bold")
         table.add_column("#", width=4)
-        table.add_column("Component", min_width=30)
+        table.add_column("CVE", min_width=24)
+        table.add_column("Severity", width=10)
         table.add_column("Risk", width=6)
-        table.add_column("Upgrade Path", width=18)
+        table.add_column("Fix", width=12)
         table.add_column("Action", min_width=20)
 
         for f in findings:
             table.add_row(
                 str(f.rank),
-                f.scored.match.affected_component.name,
+                f.scored.match.cve_id,
+                f.scored.match.severity,
                 f"{f.scored.combined_score:.2f}",
-                f.upgrade_path,
+                f.scored.match.fixed_version or "none",
                 f.action,
             )
 
         console.print(table)
 
-        high_risk = sum(1 for f in findings if f.scored.combined_score >= 0.7)
-        console.print(
-            f"  {len(findings)} affected component(s). {high_risk} high-risk.\n"
-        )
+    total = len(ctx.rankings)
+    high_risk = sum(1 for f in ctx.rankings if f.scored.combined_score >= 0.7)
+    components_hit = len(by_component)
+    console.print(
+        f"\n[bold]{total} finding(s)[/bold] across {components_hit} component(s). "
+        f"{high_risk} high-risk.\n"
+    )
 
     return buf.getvalue()
+
+
+_SEVERITY_ORDER = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "UNKNOWN": 0}
+
+
+def _worst_severity(severities: list[str]) -> str:
+    return max(severities, key=lambda s: _SEVERITY_ORDER.get(s, 0))

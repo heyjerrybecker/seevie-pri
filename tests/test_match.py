@@ -111,6 +111,33 @@ def test_offline_match_no_match():
     assert matches == []
 
 
+@patch("seevie_pri.stages.match.httpx")
+def test_osv_severity_from_top_level_database_specific(mock_httpx):
+    """Real GHSA entries store severity at top-level database_specific, not inside affected[]."""
+    mock_post_resp = MagicMock()
+    mock_post_resp.json.return_value = {
+        "results": [{"vulns": [{"id": "GHSA-test", "modified": "2024-01-01"}]}]
+    }
+    mock_post_resp.raise_for_status = MagicMock()
+    mock_httpx.post.return_value = mock_post_resp
+
+    mock_get_resp = MagicMock()
+    mock_get_resp.json.return_value = {
+        "id": "GHSA-test",
+        "database_specific": {"severity": "HIGH"},
+        "affected": [{
+            "package": {"ecosystem": "Maven", "name": "com.example:lib"},
+            "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.0"}]}],
+            "database_specific": {"source": "https://github.com/..."},
+        }],
+    }
+    mock_get_resp.raise_for_status = MagicMock()
+    mock_httpx.get.return_value = mock_get_resp
+
+    matches = osv_match([_make_component("com.example:lib", "1.0", "pkg:maven/com.example/lib@1.0")])
+    assert matches[0].severity == "HIGH"
+
+
 def test_deduplicate_osv_wins():
     comp = _make_component("lib", "1.0", "pkg:maven/g/lib@1.0")
     osv = CVEMatch(cve_id="CVE-1", severity="CRITICAL", affected_component=comp,
