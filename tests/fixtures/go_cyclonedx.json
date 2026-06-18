@@ -1,0 +1,65 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "my-api",
+      "name": "my-api",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "gin",
+      "name": "gin",
+      "version": "1.9.1",
+      "purl": "pkg:golang/github.com/gin-gonic/gin@1.9.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "x-text",
+      "name": "text",
+      "version": "0.3.7",
+      "purl": "pkg:golang/golang.org/x/text@0.3.7"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pq",
+      "name": "pq",
+      "version": "1.10.9",
+      "purl": "pkg:golang/github.com/lib/pq@1.10.9"
+    },
+    {
+      "type": "library",
+      "bom-ref": "zap",
+      "name": "zap",
+      "version": "1.27.0",
+      "purl": "pkg:golang/go.uber.org/zap@1.27.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "my-api",
+      "dependsOn": ["gin", "pq", "zap"]
+    },
+    {
+      "ref": "gin",
+      "dependsOn": ["x-text"]
+    },
+    {
+      "ref": "x-text",
+      "dependsOn": []
+    },
+    {
+      "ref": "pq",
+      "dependsOn": []
+    },
+    {
+      "ref": "zap",
+      "dependsOn": []
+    }
+  ]
+}
