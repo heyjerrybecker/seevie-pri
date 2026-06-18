@@ -19,7 +19,7 @@ def parse(ctx: TriageContext) -> TriageContext:
     elif fmt == "cyclonedx-xml":
         components, graph, root = _parse_cyclonedx_xml(raw)
     elif fmt == "spdx-json":
-        raise NotImplementedError("SPDX support coming in a future release")
+        components, graph, root = _parse_spdx_json(raw)
     else:
         raise ValueError(f"Unrecognized SBOM format: {fmt}")
 
@@ -154,6 +154,67 @@ def _json_to_component(data: dict) -> Component:
         group = data.get("group", "")
         comp_name = data.get("name", "")
         name = f"{group}:{comp_name}" if group else comp_name
+        ecosystem = ""
+
+    return Component(
+        name=name,
+        version=version,
+        ecosystem=ecosystem,
+        purl=purl_str,
+        direct=False,
+    )
+
+
+def _parse_spdx_json(raw: bytes) -> tuple[list[Component], nx.DiGraph, str]:
+    data = json.loads(raw)
+    components = []
+    graph = nx.DiGraph()
+    ref_to_comp: dict[str, Component] = {}
+
+    for pkg in data.get("packages", []):
+        spdx_id = pkg["SPDXID"]
+        comp = _spdx_pkg_to_component(pkg)
+        components.append(comp)
+        graph.add_node(spdx_id, component=comp)
+        ref_to_comp[spdx_id] = comp
+
+    root_ref = ""
+    for rel in data.get("relationships", []):
+        rel_type = rel["relationshipType"]
+        if rel_type == "DESCRIBES" and rel["spdxElementId"] == "SPDXRef-DOCUMENT":
+            root_ref = rel["relatedSpdxElement"]
+        elif rel_type == "DEPENDS_ON":
+            parent = rel["spdxElementId"]
+            child = rel["relatedSpdxElement"]
+            if parent in graph and child in graph:
+                graph.add_edge(parent, child)
+
+    if not root_ref and components:
+        root_ref = data["packages"][0]["SPDXID"]
+
+    if root_ref in ref_to_comp:
+        ref_to_comp[root_ref].direct = True
+
+    for child_ref in graph.successors(root_ref):
+        if child_ref in ref_to_comp:
+            ref_to_comp[child_ref].direct = True
+
+    return components, graph, root_ref
+
+
+def _spdx_pkg_to_component(pkg: dict) -> Component:
+    purl_str = None
+    for ref in pkg.get("externalRefs", []):
+        if ref.get("referenceType") == "purl":
+            purl_str = ref["referenceLocator"]
+            break
+
+    version = pkg.get("versionInfo", "")
+
+    if purl_str:
+        ecosystem, name, _ = parse_purl(purl_str)
+    else:
+        name = pkg.get("name", "")
         ecosystem = ""
 
     return Component(

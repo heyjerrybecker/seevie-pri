@@ -125,7 +125,44 @@ def test_parse_cyclonedx_xml_graph():
     assert ctx.graph.has_edge("my-app", "log4j-core")
 
 
-def test_parse_spdx_raises():
-    ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample.json")
-    with pytest.raises(NotImplementedError, match="SPDX"):
-        parse(ctx)
+def test_parse_spdx_json_components():
+    ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample_full.json")
+    ctx = parse(ctx)
+
+    assert len(ctx.components) == 7
+    names = {c.name for c in ctx.components}
+    assert "org.apache.logging.log4j:log4j-core" in names
+    assert "org.springframework:spring-beans" in names
+
+
+def test_parse_spdx_json_graph():
+    ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample_full.json")
+    ctx = parse(ctx)
+
+    assert ctx.root_node == "SPDXRef-my-app"
+    assert len(ctx.graph.nodes) == 7
+    assert len(ctx.graph.edges) == 6
+    assert ctx.graph.has_edge("SPDXRef-my-app", "SPDXRef-log4j-core")
+    assert ctx.graph.has_edge("SPDXRef-starter-web", "SPDXRef-spring-webmvc")
+
+
+def test_parse_spdx_json_direct_flag():
+    ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample_full.json")
+    ctx = parse(ctx)
+
+    comp_by_name = {c.name: c for c in ctx.components}
+    assert comp_by_name["org.apache.logging.log4j:log4j-core"].direct is True
+    assert comp_by_name["org.springframework:spring-beans"].direct is False
+
+
+def test_parse_spdx_matches_cyclonedx_components():
+    """SPDX and CycloneDX fixtures have the same dep tree — component names must match."""
+    cdx_ctx = TriageContext(sbom_path=FIXTURES / "cyclonedx_sample.json")
+    cdx_ctx = parse(cdx_ctx)
+
+    spdx_ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample_full.json")
+    spdx_ctx = parse(spdx_ctx)
+
+    cdx_names = {c.name for c in cdx_ctx.components if c.purl}
+    spdx_names = {c.name for c in spdx_ctx.components if c.purl}
+    assert cdx_names == spdx_names

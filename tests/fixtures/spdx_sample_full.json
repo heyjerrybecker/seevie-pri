@@ -1,0 +1,134 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "my-application",
+  "documentNamespace": "https://example.org/spdxdocs/my-app-1.0.0",
+  "creationInfo": {
+    "created": "2024-01-15T10:00:00Z",
+    "creators": ["Tool: seevie-pri-test"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-my-app",
+      "name": "my-application",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-starter-web",
+      "name": "spring-boot-starter-web",
+      "versionInfo": "2.6.5",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.springframework.boot/spring-boot-starter-web@2.6.5"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-spring-webmvc",
+      "name": "spring-webmvc",
+      "versionInfo": "5.3.17",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.springframework/spring-webmvc@5.3.17"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-spring-beans",
+      "name": "spring-beans",
+      "versionInfo": "5.3.17",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.springframework/spring-beans@5.3.17"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-log4j-core",
+      "name": "log4j-core",
+      "versionInfo": "2.14.1",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-log4j-api",
+      "name": "log4j-api",
+      "versionInfo": "2.14.1",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-api@2.14.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-jackson-databind",
+      "name": "jackson-databind",
+      "versionInfo": "2.13.2",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.2"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-my-app",
+      "relationshipType": "DESCRIBES"
+    },
+    {
+      "spdxElementId": "SPDXRef-my-app",
+      "relatedSpdxElement": "SPDXRef-starter-web",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-my-app",
+      "relatedSpdxElement": "SPDXRef-log4j-core",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-my-app",
+      "relatedSpdxElement": "SPDXRef-jackson-databind",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-starter-web",
+      "relatedSpdxElement": "SPDXRef-spring-webmvc",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-spring-webmvc",
+      "relatedSpdxElement": "SPDXRef-spring-beans",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-log4j-core",
+      "relatedSpdxElement": "SPDXRef-log4j-api",
+      "relationshipType": "DEPENDS_ON"
+    }
+  ]
+}
