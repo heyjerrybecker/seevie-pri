@@ -1,7 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from seevie_pri.purl import parse_purl
-from seevie_pri.stages.parse import parse
+from seevie_pri.stages.parse import parse, detect_format
 from seevie_pri.context import TriageContext
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -69,3 +71,43 @@ def test_parse_cyclonedx_json_ecosystem():
     for comp in ctx.components:
         if comp.purl:
             assert comp.ecosystem == "maven"
+
+
+def test_detect_format_cyclonedx_json():
+    raw = (FIXTURES / "cyclonedx_sample.json").read_bytes()
+    assert detect_format(raw) == "cyclonedx-json"
+
+
+def test_detect_format_cyclonedx_xml():
+    raw = (FIXTURES / "cyclonedx_sample.xml").read_bytes()
+    assert detect_format(raw) == "cyclonedx-xml"
+
+
+def test_detect_format_spdx_json():
+    raw = (FIXTURES / "spdx_sample.json").read_bytes()
+    assert detect_format(raw) == "spdx-json"
+
+
+def test_parse_cyclonedx_xml_components():
+    ctx = TriageContext(sbom_path=FIXTURES / "cyclonedx_sample.xml")
+    ctx = parse(ctx)
+
+    assert len(ctx.components) == 7
+    names = {c.name for c in ctx.components}
+    assert "org.apache.logging.log4j:log4j-core" in names
+
+
+def test_parse_cyclonedx_xml_graph():
+    ctx = TriageContext(sbom_path=FIXTURES / "cyclonedx_sample.xml")
+    ctx = parse(ctx)
+
+    assert ctx.root_node == "my-app"
+    assert len(ctx.graph.nodes) == 7
+    assert len(ctx.graph.edges) == 6
+    assert ctx.graph.has_edge("my-app", "log4j-core")
+
+
+def test_parse_spdx_raises():
+    ctx = TriageContext(sbom_path=FIXTURES / "spdx_sample.json")
+    with pytest.raises(NotImplementedError, match="SPDX"):
+        parse(ctx)

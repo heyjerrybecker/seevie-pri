@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+import xml.etree.ElementTree as ET
 
 import networkx as nx
 
@@ -78,7 +80,68 @@ def _parse_cyclonedx_json(raw: bytes) -> tuple[list[Component], nx.DiGraph, str]
 
 
 def _parse_cyclonedx_xml(raw: bytes) -> tuple[list[Component], nx.DiGraph, str]:
-    raise NotImplementedError("CycloneDX XML parsing — implemented in Task 4")
+    text = raw.decode("utf-8")
+    # Strip default namespace for simpler XPath
+    text = re.sub(r'\s+xmlns="[^"]*"', "", text, count=1)
+    root_elem = ET.fromstring(text)
+
+    components = []
+    graph = nx.DiGraph()
+    ref_to_comp: dict[str, Component] = {}
+
+    meta_comp = root_elem.find(".//metadata/component")
+    root_ref = meta_comp.get("bom-ref", "root") if meta_comp is not None else "root"
+    if meta_comp is not None:
+        root = _xml_to_component(meta_comp)
+        root.direct = True
+        components.append(root)
+        graph.add_node(root_ref, component=root)
+        ref_to_comp[root_ref] = root
+
+    for comp_elem in root_elem.findall(".//components/component"):
+        comp = _xml_to_component(comp_elem)
+        bom_ref = comp_elem.get("bom-ref", comp.name)
+        components.append(comp)
+        graph.add_node(bom_ref, component=comp)
+        ref_to_comp[bom_ref] = comp
+
+    for dep in root_elem.findall(".//dependencies/dependency"):
+        parent_ref = dep.get("ref")
+        for child in dep.findall("dependency"):
+            child_ref = child.get("ref")
+            if parent_ref in graph and child_ref in graph:
+                graph.add_edge(parent_ref, child_ref)
+
+    for child_ref in graph.successors(root_ref):
+        if child_ref in ref_to_comp:
+            ref_to_comp[child_ref].direct = True
+
+    return components, graph, root_ref
+
+
+def _xml_to_component(elem) -> Component:
+    purl_elem = elem.find("purl")
+    purl_str = purl_elem.text if purl_elem is not None else None
+    version_elem = elem.find("version")
+    version = version_elem.text if version_elem is not None else ""
+
+    if purl_str:
+        ecosystem, name, _ = parse_purl(purl_str)
+    else:
+        group_elem = elem.find("group")
+        name_elem = elem.find("name")
+        group = group_elem.text if group_elem is not None else ""
+        comp_name = name_elem.text if name_elem is not None else ""
+        name = f"{group}:{comp_name}" if group else comp_name
+        ecosystem = ""
+
+    return Component(
+        name=name,
+        version=version,
+        ecosystem=ecosystem,
+        purl=purl_str,
+        direct=False,
+    )
 
 
 def _json_to_component(data: dict) -> Component:

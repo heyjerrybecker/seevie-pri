@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.5" version="1">
+  <metadata>
+    <component type="application" bom-ref="my-app">
+      <name>my-application</name>
+      <version>1.0.0</version>
+    </component>
+  </metadata>
+  <components>
+    <component type="library" bom-ref="starter-web">
+      <group>org.springframework.boot</group>
+      <name>spring-boot-starter-web</name>
+      <version>2.6.5</version>
+      <purl>pkg:maven/org.springframework.boot/spring-boot-starter-web@2.6.5</purl>
+    </component>
+    <component type="library" bom-ref="spring-webmvc">
+      <group>org.springframework</group>
+      <name>spring-webmvc</name>
+      <version>5.3.17</version>
+      <purl>pkg:maven/org.springframework/spring-webmvc@5.3.17</purl>
+    </component>
+    <component type="library" bom-ref="spring-beans">
+      <group>org.springframework</group>
+      <name>spring-beans</name>
+      <version>5.3.17</version>
+      <purl>pkg:maven/org.springframework/spring-beans@5.3.17</purl>
+    </component>
+    <component type="library" bom-ref="log4j-core">
+      <group>org.apache.logging.log4j</group>
+      <name>log4j-core</name>
+      <version>2.14.1</version>
+      <purl>pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1</purl>
+    </component>
+    <component type="library" bom-ref="log4j-api">
+      <group>org.apache.logging.log4j</group>
+      <name>log4j-api</name>
+      <version>2.14.1</version>
+      <purl>pkg:maven/org.apache.logging.log4j/log4j-api@2.14.1</purl>
+    </component>
+    <component type="library" bom-ref="jackson-databind">
+      <group>com.fasterxml.jackson.core</group>
+      <name>jackson-databind</name>
+      <version>2.13.2</version>
+      <purl>pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.2</purl>
+    </component>
+  </components>
+  <dependencies>
+    <dependency ref="my-app">
+      <dependency ref="starter-web"/>
+      <dependency ref="log4j-core"/>
+      <dependency ref="jackson-databind"/>
+    </dependency>
+    <dependency ref="starter-web">
+      <dependency ref="spring-webmvc"/>
+    </dependency>
+    <dependency ref="spring-webmvc">
+      <dependency ref="spring-beans"/>
+    </dependency>
+    <dependency ref="spring-beans"/>
+    <dependency ref="log4j-core">
+      <dependency ref="log4j-api"/>
+    </dependency>
+    <dependency ref="log4j-api"/>
+    <dependency ref="jackson-databind"/>
+  </dependencies>
+</bom>
