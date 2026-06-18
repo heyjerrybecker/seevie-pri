@@ -1,0 +1,24 @@
+[
+  {
+    "id": "CVE-2021-44228",
+    "affected": [
+      {
+        "package": {
+          "ecosystem": "Maven",
+          "name": "org.apache.logging.log4j:log4j-core",
+          "purl": "pkg:maven/org.apache.logging.log4j/log4j-core"
+        },
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {"introduced": "2.0"},
+              {"fixed": "2.16.0"}
+            ]
+          }
+        ],
+        "database_specific": {"severity": "CRITICAL"}
+      }
+    ]
+  }
+]

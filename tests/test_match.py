@@ -1,7 +1,10 @@
 from unittest.mock import patch, MagicMock
+from pathlib import Path
 
-from seevie_pri.context import Component, TriageContext
-from seevie_pri.stages.match import match, osv_match
+from seevie_pri.context import Component, TriageContext, CVEMatch
+from seevie_pri.stages.match import match, osv_match, offline_match, deduplicate
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _make_component(name, version, purl, direct=True):
@@ -83,3 +86,39 @@ def test_osv_match_skips_components_without_purl(mock_httpx):
     matches = osv_match([comp])
     assert matches == []
     mock_httpx.post.assert_not_called()
+
+
+def test_offline_match():
+    comp = _make_component(
+        "org.apache.logging.log4j:log4j-core", "2.14.1",
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+    )
+    matches = offline_match([comp], FIXTURES / "offline_cve_data.json")
+
+    assert len(matches) == 1
+    assert matches[0].cve_id == "CVE-2021-44228"
+    assert matches[0].severity == "CRITICAL"
+    assert matches[0].fixed_version == "2.16.0"
+    assert matches[0].source == "manual"
+
+
+def test_offline_match_no_match():
+    comp = _make_component(
+        "com.example:safe-lib", "1.0.0",
+        "pkg:maven/com.example/safe-lib@1.0.0",
+    )
+    matches = offline_match([comp], FIXTURES / "offline_cve_data.json")
+    assert matches == []
+
+
+def test_deduplicate_osv_wins():
+    comp = _make_component("lib", "1.0", "pkg:maven/g/lib@1.0")
+    osv = CVEMatch(cve_id="CVE-1", severity="CRITICAL", affected_component=comp,
+                   fixed_version="2.0", source="osv")
+    nvd = CVEMatch(cve_id="CVE-1", severity="HIGH", affected_component=comp,
+                   fixed_version=None, source="nvd")
+
+    result = deduplicate([nvd, osv])
+    assert len(result) == 1
+    assert result[0].source == "osv"
+    assert result[0].severity == "CRITICAL"
