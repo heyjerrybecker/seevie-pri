@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, UploadFile
 
 from seevie_pri.context import TriageContext
+from seevie_pri.dashboard import create_dashboard_router
 from seevie_pri.db import (
     init_db,
     store_sbom,
@@ -31,6 +32,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         db_path = DEFAULT_DB_PATH
 
     conn = init_db(db_path)
+    app.include_router(create_dashboard_router(conn))
 
     @app.get("/sbom")
     def list_indexed_sboms():

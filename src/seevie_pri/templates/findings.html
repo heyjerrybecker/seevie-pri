@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Findings{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Findings</h1>
+    <p>All vulnerability findings across services</p>
+</div>
+<div class="filters">
+    <select name="severity"
+            hx-get="/dashboard/_findings_table"
+            hx-target="#findings-body"
+            hx-include="[name='min_score']">
+        <option value="">All Severities</option>
+        <option value="CRITICAL"{% if current_severity == 'CRITICAL' %} selected{% endif %}>Critical</option>
+        <option value="HIGH"{% if current_severity == 'HIGH' %} selected{% endif %}>High</option>
+        <option value="MEDIUM"{% if current_severity == 'MEDIUM' %} selected{% endif %}>Medium</option>
+        <option value="LOW"{% if current_severity == 'LOW' %} selected{% endif %}>Low</option>
+    </select>
+    <input type="number" name="min_score" placeholder="Min score" step="0.1" min="0" max="1"
+           value="{{ current_min_score if current_min_score else '' }}"
+           hx-get="/dashboard/_findings_table"
+           hx-target="#findings-body"
+           hx-trigger="change"
+           hx-include="[name='severity']">
+</div>
+<table>
+    <thead><tr><th>CVE</th><th>Severity</th><th>Component</th><th>Service</th><th>Risk</th><th>Fix</th><th>Action</th></tr></thead>
+    <tbody id="findings-body">
+    {% for f in findings %}
+    <tr>
+        <td>{{ f.cve_id }}</td>
+        <td><span class="badge {{ f.severity|lower }}">{{ f.severity }}</span></td>
+        <td>{{ f.component }}</td>
+        <td>{{ f.sbom_name }}</td>
+        <td>{{ "%.2f"|format(f.combined_score) }}</td>
+        <td>{{ f.fixed_version or "—" }}</td>
+        <td>{{ f.action }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-state">No findings. Index SBOMs and run a rescan.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

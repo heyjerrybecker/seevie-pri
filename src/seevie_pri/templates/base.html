@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeeviePri — {% block title %}Dashboard{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a1a; color: #e0e0e0; display: flex; min-height: 100vh; }
+
+        .sidebar { width: 220px; background: #12122a; border-right: 1px solid #1e1e3a; padding: 20px 0; display: flex; flex-direction: column; transition: width 0.2s; position: fixed; height: 100vh; z-index: 10; }
+        .sidebar.collapsed { width: 56px; }
+        .sidebar.collapsed .nav-text, .sidebar.collapsed .sidebar-header span, .sidebar.collapsed .rescan-text { display: none; }
+        .sidebar.collapsed .sidebar-header { justify-content: center; }
+
+        .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 0 16px 20px; border-bottom: 1px solid #1e1e3a; }
+        .sidebar-header span { font-size: 16px; font-weight: 700; color: #4ecdc4; white-space: nowrap; }
+        .toggle-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 18px; padding: 4px; }
+        .toggle-btn:hover { color: #4ecdc4; }
+
+        .nav-links { flex: 1; padding: 12px 0; }
+        .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #888; text-decoration: none; font-size: 14px; transition: all 0.15s; }
+        .nav-link:hover { color: #e0e0e0; background: #1a1a35; }
+        .nav-link.active { color: #fff; background: #1e1e3a; border-left: 3px solid #4ecdc4; }
+        .nav-icon { font-size: 16px; min-width: 20px; text-align: center; }
+
+        .rescan-btn { margin: 12px 12px; padding: 10px; background: #1a3a4a; border: 1px solid #2a5a6a; border-radius: 6px; color: #4ecdc4; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; justify-content: center; transition: all 0.15s; }
+        .rescan-btn:hover { background: #2a4a5a; border-color: #4ecdc4; }
+
+        .main { margin-left: 220px; flex: 1; padding: 24px 32px; transition: margin-left 0.2s; min-height: 100vh; }
+        body.sidebar-collapsed .main { margin-left: 56px; }
+
+        .page-header { margin-bottom: 24px; }
+        .page-header h1 { font-size: 22px; font-weight: 600; color: #fff; }
+        .page-header p { font-size: 14px; color: #888; margin-top: 4px; }
+
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: #12122a; border: 1px solid #1e1e3a; border-radius: 8px; padding: 20px; text-align: center; }
+        .card-value { font-size: 32px; font-weight: 700; }
+        .card-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+        .card-value.critical { color: #e94560; }
+        .card-value.high { color: #ff6b6b; }
+        .card-value.success { color: #4ecdc4; }
+        .card-value.info { color: #45b7d1; }
+
+        .severity-bar { display: flex; height: 20px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+        .severity-bar .seg-critical { background: #e94560; }
+        .severity-bar .seg-high { background: #ff6b6b; }
+        .severity-bar .seg-medium { background: #ffa502; }
+        .severity-bar .seg-low { background: #4ecdc4; }
+        .severity-bar .seg-unknown { background: #555; }
+        .severity-legend { display: flex; gap: 16px; font-size: 12px; color: #888; }
+        .severity-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .severity-legend .l-critical::before { background: #e94560; }
+        .severity-legend .l-high::before { background: #ff6b6b; }
+        .severity-legend .l-medium::before { background: #ffa502; }
+        .severity-legend .l-low::before { background: #4ecdc4; }
+
+        table { width: 100%; border-collapse: collapse; background: #12122a; border-radius: 8px; overflow: hidden; }
+        thead th { background: #1a1a35; padding: 12px 16px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid #1e1e3a; }
+        tbody td { padding: 10px 16px; border-bottom: 1px solid #1a1a2a; font-size: 13px; }
+        tbody tr:hover { background: #1a1a35; cursor: pointer; }
+        tbody tr:last-child td { border-bottom: none; }
+
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge.critical { background: #e9456020; color: #e94560; }
+        .badge.high { background: #ff6b6b20; color: #ff6b6b; }
+        .badge.medium, .badge.moderate { background: #ffa50220; color: #ffa502; }
+        .badge.low { background: #4ecdc420; color: #4ecdc4; }
+        .badge.unknown { background: #55555520; color: #888; }
+
+        .section { background: #12122a; border: 1px solid #1e1e3a; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 12px; }
+
+        .upload-area { border: 2px dashed #1e1e3a; border-radius: 8px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.15s; }
+        .upload-area:hover { border-color: #4ecdc4; background: #12122a; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-area label { cursor: pointer; font-size: 16px; color: #888; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+        .form-group input[type="text"] { width: 100%; padding: 10px 12px; background: #0a0a1a; border: 1px solid #1e1e3a; border-radius: 6px; color: #e0e0e0; font-size: 14px; }
+        .form-group input[type="text"]:focus { outline: none; border-color: #4ecdc4; }
+
+        .btn { padding: 10px 20px; border-radius: 6px; font-size: 14px; cursor: pointer; border: none; transition: all 0.15s; }
+        .btn-primary { background: #4ecdc4; color: #0a0a1a; font-weight: 600; }
+        .btn-primary:hover { background: #45b7b0; }
+
+        .filters { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+        .filters select, .filters input { padding: 8px 12px; background: #0a0a1a; border: 1px solid #1e1e3a; border-radius: 6px; color: #e0e0e0; font-size: 13px; }
+        .filters select:focus, .filters input:focus { outline: none; border-color: #4ecdc4; }
+
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline; }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4ecdc4; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .rescan-result { padding: 8px 12px; font-size: 12px; color: #4ecdc4; text-align: center; }
+        .empty-state { text-align: center; padding: 48px; color: #888; }
+        .empty-state p { margin-bottom: 12px; }
+        .success-msg { background: #4ecdc420; border: 1px solid #4ecdc4; border-radius: 6px; padding: 16px; margin: 16px 0; color: #4ecdc4; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>SeeviePri</span>
+            <button class="toggle-btn" onclick="toggleSidebar()">&#9776;</button>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard/" class="nav-link{% if active_page == 'overview' %} active{% endif %}">
+                <span class="nav-icon">&#128202;</span><span class="nav-text">Overview</span>
+            </a>
+            <a href="/dashboard/services" class="nav-link{% if active_page == 'services' %} active{% endif %}">
+                <span class="nav-icon">&#128230;</span><span class="nav-text">Services</span>
+            </a>
+            <a href="/dashboard/findings" class="nav-link{% if active_page == 'findings' %} active{% endif %}">
+                <span class="nav-icon">&#128269;</span><span class="nav-text">Findings</span>
+            </a>
+            <a href="/dashboard/upload" class="nav-link{% if active_page == 'upload' %} active{% endif %}">
+                <span class="nav-icon">&#11014;</span><span class="nav-text">Upload SBOM</span>
+            </a>
+        </div>
+        <div>
+            <button class="rescan-btn"
+                    hx-post="/dashboard/_rescan"
+                    hx-target="#rescan-result"
+                    hx-indicator="#rescan-spinner">
+                <span class="nav-icon">&#128260;</span>
+                <span class="rescan-text">Rescan Now</span>
+                <span id="rescan-spinner" class="htmx-indicator"><span class="spinner"></span></span>
+            </button>
+            <div id="rescan-result" class="rescan-result"></div>
+        </div>
+    </nav>
+    <main class="main">
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+        }
+    </script>
+</body>
+</html>

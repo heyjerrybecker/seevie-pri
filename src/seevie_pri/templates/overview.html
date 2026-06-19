@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Overview</h1>
+    <p>Vulnerability triage summary across all services</p>
+</div>
+
+<div class="cards">
+    <div class="card"><div class="card-value critical">{{ summary.total_findings }}</div><div class="card-label">Total Findings</div></div>
+    <div class="card"><div class="card-value high">{{ summary.high_risk }}</div><div class="card-label">High Risk</div></div>
+    <div class="card"><div class="card-value success">{{ summary.services }}</div><div class="card-label">Services</div></div>
+    <div class="card"><div class="card-value info">{{ summary.critical }}</div><div class="card-label">Critical CVEs</div></div>
+</div>
+
+{% if summary.total_findings > 0 %}
+<div class="section">
+    <div class="section-title">Severity Breakdown</div>
+    {% set counts = summary.severity_counts %}
+    {% set total = summary.total_findings %}
+    <div class="severity-bar">
+        {% if counts.get('CRITICAL', 0) %}<div class="seg-critical" style="width:{{ (counts.CRITICAL / total * 100)|round }}%"></div>{% endif %}
+        {% if counts.get('HIGH', 0) %}<div class="seg-high" style="width:{{ (counts.HIGH / total * 100)|round }}%"></div>{% endif %}
+        {% if counts.get('MEDIUM', 0) or counts.get('MODERATE', 0) %}<div class="seg-medium" style="width:{{ ((counts.get('MEDIUM', 0) + counts.get('MODERATE', 0)) / total * 100)|round }}%"></div>{% endif %}
+        {% if counts.get('LOW', 0) %}<div class="seg-low" style="width:{{ (counts.LOW / total * 100)|round }}%"></div>{% endif %}
+        {% if counts.get('UNKNOWN', 0) %}<div class="seg-unknown" style="width:{{ (counts.UNKNOWN / total * 100)|round }}%"></div>{% endif %}
+    </div>
+    <div class="severity-legend">
+        <span class="l-critical">Critical {{ counts.get('CRITICAL', 0) }}</span>
+        <span class="l-high">High {{ counts.get('HIGH', 0) }}</span>
+        <span class="l-medium">Medium {{ counts.get('MEDIUM', 0) + counts.get('MODERATE', 0) }}</span>
+        <span class="l-low">Low {{ counts.get('LOW', 0) }}</span>
+    </div>
+</div>
+{% endif %}
+
+<div class="section">
+    <div class="section-title">Findings by Service</div>
+    <table>
+        <thead><tr><th>Service</th><th>Ecosystem</th><th>Findings</th><th>Worst Severity</th></tr></thead>
+        <tbody>
+        {% for s in summary.service_findings %}
+        <tr onclick="location.href='/dashboard/services/{{ s.id }}'">
+            <td>{{ s.name }}</td>
+            <td>{{ s.ecosystem }}</td>
+            <td>{{ s.finding_count }}</td>
+            <td><span class="badge {{ s.worst_severity|lower }}">{{ s.worst_severity }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

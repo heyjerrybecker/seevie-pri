@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ sbom.name if sbom else 'Service' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ sbom.name if sbom else 'Unknown' }}</h1>
+    <p>{{ sbom.ecosystem if sbom else '' }} · {{ sbom.component_count if sbom else 0 }} components</p>
+</div>
+<table>
+    <thead><tr><th>CVE</th><th>Severity</th><th>Component</th><th>Risk</th><th>Fix</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for f in findings %}
+    <tr>
+        <td>{{ f.cve_id }}</td>
+        <td><span class="badge {{ f.severity|lower }}">{{ f.severity }}</span></td>
+        <td>{{ f.component }}</td>
+        <td>{{ "%.2f"|format(f.combined_score) }}</td>
+        <td>{{ f.fixed_version or "—" }}</td>
+        <td>{{ f.action }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty-state">No findings. Run a rescan to check for vulnerabilities.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

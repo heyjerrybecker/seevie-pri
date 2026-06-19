@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+        <h1>Services</h1>
+        <p>Indexed SBOMs</p>
+    </div>
+    <a href="/dashboard/upload" class="btn btn-primary">Upload SBOM</a>
+</div>
+<table>
+    <thead><tr><th>Name</th><th>Ecosystem</th><th>Components</th><th>Indexed</th></tr></thead>
+    <tbody>
+    {% for s in sboms %}
+    <tr onclick="location.href='/dashboard/services/{{ s.id }}'">
+        <td>{{ s.name }}</td><td>{{ s.ecosystem }}</td><td>{{ s.component_count }}</td><td>{{ s.indexed_at[:10] }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
