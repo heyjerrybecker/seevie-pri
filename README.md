@@ -85,6 +85,43 @@ cyclonedx-py environment -o bom.json
 
 **SBOM quality matters.** Tools like `syft` produce flat component lists (good for detection), while build-tool-integrated generators (like `cyclonedx-py`, `cyclonedx-maven-plugin`, or `@cyclonedx/cdxgen`) include full dependency trees. SeeviePri's topology scoring is most valuable with dependency tree data — a flat SBOM still works, but the risk differentiation between components will be limited.
 
+## CI Integration
+
+SeeviePri fits into your CI pipeline with two lines. Re-indexing the same service name automatically updates the existing entry — no duplicates.
+
+**GitLab CI:**
+
+```yaml
+vulnerability_triage:
+  script:
+    - syft . -o cyclonedx-json > bom.json
+    - seevie-pri index --sbom bom.json --name $CI_PROJECT_NAME
+    - seevie-pri rescan --format json --output triage-results.json
+  artifacts:
+    paths:
+      - triage-results.json
+```
+
+**GitHub Actions:**
+
+```yaml
+- name: Vulnerability triage
+  run: |
+    syft . -o cyclonedx-json > bom.json
+    seevie-pri index --sbom bom.json --name ${{ github.event.repository.name }}
+    seevie-pri rescan --format json --output triage-results.json
+```
+
+**Or hit the API directly** (if `seevie-pri serve` is running):
+
+```bash
+curl -X POST http://seevie-pri:8080/sbom \
+  -F file=@bom.json \
+  -F name=payment-api
+
+curl -X POST http://seevie-pri:8080/rescan
+```
+
 ## Architecture
 
 Pipeline of 5 swappable stages:

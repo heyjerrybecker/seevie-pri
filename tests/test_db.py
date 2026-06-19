@@ -103,6 +103,33 @@ def test_clear_findings(tmp_path):
     conn.close()
 
 
+def test_store_sbom_upsert(tmp_path):
+    conn = init_db(tmp_path / "test.db")
+
+    sbom_id_1 = store_sbom(conn, name="payment-api", ecosystem="maven",
+                           sbom_path="/v1/bom.json")
+    components_v1 = [
+        Component(name="log4j-core", version="2.14.1", ecosystem="maven", direct=True),
+    ]
+    store_components(conn, sbom_id_1, components_v1)
+    assert list_sboms(conn)[0]["component_count"] == 1
+
+    sbom_id_2 = store_sbom(conn, name="payment-api", ecosystem="maven",
+                           sbom_path="/v2/bom.json")
+    components_v2 = [
+        Component(name="log4j-core", version="2.16.0", ecosystem="maven", direct=True),
+        Component(name="spring-beans", version="5.3.18", ecosystem="maven", direct=False),
+    ]
+    store_components(conn, sbom_id_2, components_v2)
+
+    assert sbom_id_1 == sbom_id_2
+    sboms = list_sboms(conn)
+    assert len(sboms) == 1
+    assert sboms[0]["component_count"] == 2
+    assert sboms[0]["sbom_path"] == "/v2/bom.json"
+    conn.close()
+
+
 def test_get_summary(tmp_path):
     conn = init_db(tmp_path / "test.db")
     sbom_id = store_sbom(conn, name="test", ecosystem="maven",

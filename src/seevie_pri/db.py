@@ -56,12 +56,27 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
 
 def store_sbom(conn: sqlite3.Connection, name: str, ecosystem: str,
                sbom_path: str) -> str:
-    sbom_id = str(uuid.uuid4())
+    existing = conn.execute(
+        "SELECT id FROM sboms WHERE name = ?", (name,)
+    ).fetchone()
+
     now = datetime.now(timezone.utc).isoformat()
-    conn.execute(
-        "INSERT INTO sboms (id, name, ecosystem, sbom_path, indexed_at) VALUES (?, ?, ?, ?, ?)",
-        (sbom_id, name, ecosystem, sbom_path, now),
-    )
+
+    if existing:
+        sbom_id = existing["id"]
+        conn.execute("DELETE FROM components WHERE sbom_id = ?", (sbom_id,))
+        conn.execute("DELETE FROM findings WHERE sbom_id = ?", (sbom_id,))
+        conn.execute(
+            "UPDATE sboms SET ecosystem = ?, sbom_path = ?, indexed_at = ? WHERE id = ?",
+            (ecosystem, sbom_path, now, sbom_id),
+        )
+    else:
+        sbom_id = str(uuid.uuid4())
+        conn.execute(
+            "INSERT INTO sboms (id, name, ecosystem, sbom_path, indexed_at) VALUES (?, ?, ?, ?, ?)",
+            (sbom_id, name, ecosystem, sbom_path, now),
+        )
+
     conn.commit()
     return sbom_id
 

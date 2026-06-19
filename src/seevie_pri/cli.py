@@ -122,12 +122,14 @@ def _cmd_index(args):
             break
 
     conn = init_db(args.db)
+    existing = [s for s in list_sboms(conn) if s["name"] == name]
     sbom_id = store_sbom(conn, name=name, ecosystem=ecosystem,
                          sbom_path=str(args.sbom.resolve()))
     store_components(conn, sbom_id, ctx.components)
     conn.close()
 
-    print(f"Indexed {name}: {len(ctx.components)} components (id: {sbom_id})")
+    verb = "Updated" if existing else "Indexed"
+    print(f"{verb} {name}: {len(ctx.components)} components (id: {sbom_id})")
     sys.exit(0)
 
 
