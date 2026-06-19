@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from seevie_pri.db import (
+    fetch_epss_scores,
     get_findings,
     get_findings_for_sbom,
     get_summary,
@@ -151,7 +152,9 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
         clear_findings(conn)
         total = 0
         high = 0
+        all_cve_ids = []
 
+        scan_results = []
         for sbom in sboms:
             sbom_path = Path(sbom["sbom_path"])
             if not sbom_path.exists():
@@ -162,12 +165,27 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
                 ctx = run(ctx, stages)
             except Exception:
                 continue
-            store_findings(conn, sbom["id"], ctx.rankings)
+            scan_results.append((sbom, ctx))
+            all_cve_ids.extend(f.scored.match.cve_id for f in ctx.rankings)
+
+        epss_scores = fetch_epss_scores(list(set(all_cve_ids)))
+
+        for sbom, ctx in scan_results:
+            bv = sbom.get("business_value", 1_000_000)
+            store_findings(conn, sbom["id"], ctx.rankings,
+                           epss_scores=epss_scores, business_value=bv)
             total += len(ctx.rankings)
-            high += sum(1 for f in ctx.rankings if f.scored.combined_score >= 0.7)
+            high += sum(1 for f in ctx.rankings
+                        if f.scored.match.severity in ("HIGH", "CRITICAL"))
+
+        exposure = sum(
+            f.get("financial_risk", 0) for f in get_findings(conn)
+        )
+        exp_str = f"${exposure:,.0f}" if exposure else "$0"
 
         return HTMLResponse(
-            f'<span>Scanned {len(sboms)} service(s). {total} finding(s), {high} high-risk.</span>'
+            f'<span>Scanned {len(sboms)} service(s). {total} finding(s), '
+            f'{high} high/critical. {exp_str} total exposure.</span>'
         )
 
     return router

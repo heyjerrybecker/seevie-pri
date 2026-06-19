@@ -241,12 +241,12 @@
 {% if summary.critical > 0 %}
 <div class="exec-banner banner-critical">
     <i class="fa-solid fa-circle-exclamation"></i>
-    <span>Your environment has <strong>{{ summary.critical }} critical vulnerabilit{{ 'y' if summary.critical == 1 else 'ies' }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>. Immediate review recommended.</span>
+    <span>Your environment has <strong>{{ summary.critical }} critical vulnerabilit{{ 'y' if summary.critical == 1 else 'ies' }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>.{% if summary.total_exposure > 0 %} Estimated exposure: <strong>${{ "{:,.0f}".format(summary.total_exposure) }}</strong>.{% endif %} Immediate review recommended.</span>
 </div>
 {% elif summary.total_findings > 0 %}
 <div class="exec-banner banner-warn">
     <i class="fa-solid fa-triangle-exclamation"></i>
-    <span>Your environment has <strong>{{ summary.total_findings }} finding{{ 's' if summary.total_findings != 1 }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>. No critical vulnerabilities detected.</span>
+    <span>Your environment has <strong>{{ summary.total_findings }} finding{{ 's' if summary.total_findings != 1 }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>.{% if summary.total_exposure > 0 %} Estimated exposure: <strong>${{ "{:,.0f}".format(summary.total_exposure) }}</strong>.{% endif %} No critical vulnerabilities detected.</span>
 </div>
 {% else %}
 <div class="exec-banner banner-clear">
@@ -276,6 +276,11 @@
         <div class="card-icon ic-critical"><i class="fa-solid fa-skull-crossbones"></i></div>
         <div class="card-value info">{{ summary.critical }}</div>
         <div class="card-label">Critical CVEs</div>
+    </div>
+    <div class="card">
+        <div class="card-icon" style="color:#ffa502;"><i class="fa-solid fa-dollar-sign"></i></div>
+        <div class="card-value" style="color:#ffa502;font-size:24px;">${{ "{:,.0f}".format(summary.total_exposure) }}</div>
+        <div class="card-label">Est. Exposure</div>
     </div>
 </div>
 
@@ -308,7 +313,7 @@
 <div class="section">
     <div class="section-title">Findings by Service</div>
     <table>
-        <thead><tr><th>Service</th><th>Ecosystem</th><th>Findings</th><th>Worst Severity</th></tr></thead>
+        <thead><tr><th>Service</th><th>Ecosystem</th><th>Findings</th><th>Worst Severity</th><th>Est. Exposure</th></tr></thead>
         <tbody>
         {% for s in summary.service_findings %}
         <tr onclick="location.href='/dashboard/services/{{ s.id }}'">
@@ -316,9 +321,10 @@
             <td>{{ s.ecosystem }}</td>
             <td>{{ s.finding_count }}</td>
             <td><span class="badge {{ s.worst_severity|lower }}">{{ s.worst_severity }}</span></td>
+            <td style="font-family:'JetBrains Mono',monospace;">${{ "{:,.0f}".format(s.exposure) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
+        <tr><td colspan="5" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
         {% endfor %}
         </tbody>
     </table>

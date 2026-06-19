@@ -24,16 +24,16 @@
            hx-include="[name='severity']">
 </div>
 <table>
-    <thead><tr><th>CVE</th><th>Severity</th><th>Blast Radius</th><th>Component</th><th>Service</th><th>Risk</th><th>Fix</th><th>Action</th></tr></thead>
+    <thead><tr><th>CVE</th><th>Severity</th><th>Blast Radius</th><th>$ Exposure</th><th>Component</th><th>Service</th><th>Fix</th><th>Action</th></tr></thead>
     <tbody id="findings-body">
     {% for f in findings %}
     <tr>
         <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ f.cve_id }}</td>
         <td><span class="badge {{ f.severity|lower }}">{{ f.severity }}</span></td>
         <td style="text-align:center;"><span style="background:{% if f.blast_radius >= 3 %}#e9456030{% elif f.blast_radius >= 2 %}#ffa50230{% else %}#1e1e3a{% endif %};padding:3px 10px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;">{{ f.blast_radius }} svc{{ 's' if f.blast_radius != 1 }}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#ffa502;">${{ "{:,.0f}".format(f.financial_risk) }}</td>
         <td>{{ f.component }}</td>
         <td>{{ f.sbom_name }}</td>
-        <td>{{ "%.2f"|format(f.combined_score) }}</td>
         <td>{{ f.fixed_version or "—" }}</td>
         <td>{{ f.action }}</td>
     </tr>
