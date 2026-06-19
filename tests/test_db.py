@@ -9,6 +9,7 @@ from seevie_pri.db import (
     get_findings,
     get_findings_for_sbom,
     clear_findings,
+    get_summary,
 )
 from seevie_pri.context import Component, RankedFinding, ScoredMatch, CVEMatch
 
@@ -99,4 +100,37 @@ def test_clear_findings(tmp_path):
 
     clear_findings(conn)
     assert len(get_findings(conn)) == 0
+    conn.close()
+
+
+def test_get_summary(tmp_path):
+    conn = init_db(tmp_path / "test.db")
+    sbom_id = store_sbom(conn, name="test", ecosystem="maven",
+                         sbom_path="/path/to/bom.json")
+
+    comp = Component(name="log4j-core", version="2.14.1", ecosystem="maven", direct=True)
+    match = CVEMatch(cve_id="CVE-1", severity="CRITICAL", affected_component=comp,
+                     fixed_version="2.16.0")
+    scored = ScoredMatch(match=match, topology_score=0.85,
+                         compatibility_score=0.8, combined_score=0.85)
+    finding = RankedFinding(rank=1, scored=scored, action="UPGRADE AVAILABLE",
+                            upgrade_path="clean")
+    store_findings(conn, sbom_id, [finding])
+
+    summary = get_summary(conn)
+    assert summary["total_findings"] == 1
+    assert summary["high_risk"] == 1
+    assert summary["services"] == 1
+    assert summary["critical"] == 1
+    assert summary["severity_counts"]["CRITICAL"] == 1
+    assert "service_findings" in summary
+    assert summary["service_findings"][0]["name"] == "test"
+    conn.close()
+
+
+def test_get_summary_empty(tmp_path):
+    conn = init_db(tmp_path / "test.db")
+    summary = get_summary(conn)
+    assert summary["total_findings"] == 0
+    assert summary["services"] == 0
     conn.close()

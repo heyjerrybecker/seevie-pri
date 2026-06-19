@@ -145,3 +145,49 @@ def get_findings_for_sbom(conn: sqlite3.Connection, sbom_id: str) -> list[dict]:
 def clear_findings(conn: sqlite3.Connection) -> None:
     conn.execute("DELETE FROM findings")
     conn.commit()
+
+
+def get_summary(conn: sqlite3.Connection) -> dict:
+    total = conn.execute("SELECT COUNT(*) FROM findings").fetchone()[0]
+    high_risk = conn.execute(
+        "SELECT COUNT(*) FROM findings WHERE combined_score >= 0.7"
+    ).fetchone()[0]
+    services = conn.execute("SELECT COUNT(*) FROM sboms").fetchone()[0]
+    critical = conn.execute(
+        "SELECT COUNT(*) FROM findings WHERE severity = 'CRITICAL'"
+    ).fetchone()[0]
+
+    severity_rows = conn.execute(
+        "SELECT severity, COUNT(*) as cnt FROM findings GROUP BY severity"
+    ).fetchall()
+    severity_counts = {row["severity"]: row["cnt"] for row in severity_rows}
+
+    service_rows = conn.execute(
+        "SELECT s.id, s.name, s.ecosystem, COUNT(f.id) as finding_count, "
+        "MAX(CASE f.severity "
+        "  WHEN 'CRITICAL' THEN 4 WHEN 'HIGH' THEN 3 "
+        "  WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END) as worst "
+        "FROM sboms s LEFT JOIN findings f ON s.id = f.sbom_id "
+        "GROUP BY s.id ORDER BY finding_count DESC"
+    ).fetchall()
+
+    severity_labels = {4: "CRITICAL", 3: "HIGH", 2: "MEDIUM", 1: "LOW", 0: "UNKNOWN"}
+    service_findings = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "ecosystem": r["ecosystem"],
+            "finding_count": r["finding_count"],
+            "worst_severity": severity_labels.get(r["worst"] or 0, "UNKNOWN"),
+        }
+        for r in service_rows
+    ]
+
+    return {
+        "total_findings": total,
+        "high_risk": high_risk,
+        "services": services,
+        "critical": critical,
+        "severity_counts": severity_counts,
+        "service_findings": service_findings,
+    }
