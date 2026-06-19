@@ -1,39 +1,310 @@
 {% extends "base.html" %}
 {% block title %}Overview{% endblock %}
 {% block content %}
+<style>
+    .exec-banner {
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    .exec-banner i { font-size: 20px; }
+    .exec-banner strong { font-weight: 600; color: #fff; }
+    .exec-banner.banner-critical {
+        background: rgba(233, 69, 96, 0.1);
+        border-left: 4px solid #e94560;
+        color: #f0a0a0;
+    }
+    .exec-banner.banner-critical i { color: #e94560; }
+    .exec-banner.banner-warn {
+        background: rgba(255, 165, 2, 0.1);
+        border-left: 4px solid #ffa502;
+        color: #e0c080;
+    }
+    .exec-banner.banner-warn i { color: #ffa502; }
+    .exec-banner.banner-clear {
+        background: rgba(78, 205, 196, 0.1);
+        border-left: 4px solid #4ecdc4;
+        color: #a0e0d8;
+    }
+    .exec-banner.banner-clear i { color: #4ecdc4; }
+
+    .card-icon {
+        font-size: 22px;
+        margin-bottom: 8px;
+        opacity: 0.7;
+    }
+    .card-icon.ic-findings { color: #e94560; }
+    .card-icon.ic-high { color: #ff6b6b; }
+    .card-icon.ic-services { color: #4ecdc4; }
+    .card-icon.ic-critical { color: #45b7d1; }
+
+    .charts-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    .chart-donut-wrap {
+        flex: 0 0 38%;
+        min-width: 260px;
+    }
+    .chart-bar-wrap {
+        flex: 1 1 60%;
+        min-width: 300px;
+    }
+    .donut-container {
+        position: relative;
+        width: 220px;
+        height: 220px;
+        margin: 0 auto;
+    }
+    .donut-center-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+    }
+    .donut-center-label .donut-total {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 28px;
+        font-weight: 700;
+        color: #fff;
+        display: block;
+    }
+    .donut-center-label .donut-subtitle {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #888;
+    }
+
+    /* Empty state onboarding */
+    .onboarding {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    .onboarding-tagline {
+        font-size: 22px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 6px;
+    }
+    .onboarding-sub {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 40px;
+    }
+    .onboarding-steps {
+        display: flex;
+        justify-content: center;
+        gap: 0;
+        align-items: stretch;
+        flex-wrap: wrap;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .onboarding-step {
+        background: #12122a;
+        border: 1px solid #1e1e3a;
+        border-radius: 10px;
+        padding: 28px 24px 24px;
+        width: 260px;
+        text-align: center;
+        position: relative;
+    }
+    .onboarding-arrow {
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        color: #4ecdc4;
+        font-size: 20px;
+    }
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #4ecdc4;
+        color: #0a0a1a;
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 14px;
+    }
+    .step-icon {
+        font-size: 28px;
+        color: #4ecdc4;
+        margin-bottom: 12px;
+    }
+    .step-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    .step-desc {
+        font-size: 13px;
+        color: #888;
+        line-height: 1.5;
+    }
+    .step-code {
+        display: block;
+        margin-top: 10px;
+        background: #0a0a1a;
+        border: 1px solid #1e1e3a;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #4ecdc4;
+        text-align: left;
+        word-break: break-all;
+    }
+    .step-link {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 8px 18px;
+        background: #4ecdc4;
+        color: #0a0a1a;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        transition: background 0.2s;
+    }
+    .step-link:hover { background: #45b7b0; }
+
+    @media (max-width: 900px) {
+        .charts-row { flex-direction: column; }
+        .chart-donut-wrap, .chart-bar-wrap { flex: 1 1 100%; min-width: 0; }
+        .onboarding-steps { flex-direction: column; align-items: center; }
+        .onboarding-arrow { transform: rotate(90deg); padding: 8px 0; }
+    }
+</style>
+
 <div class="page-header">
     <h1>Overview</h1>
     <p>Vulnerability triage summary across all services</p>
 </div>
 
-<div class="cards">
-    <div class="card"><div class="card-value critical">{{ summary.total_findings }}</div><div class="card-label">Total Findings</div></div>
-    <div class="card"><div class="card-value high">{{ summary.high_risk }}</div><div class="card-label">High Risk</div></div>
-    <div class="card"><div class="card-value success">{{ summary.services }}</div><div class="card-label">Services</div></div>
-    <div class="card"><div class="card-value info">{{ summary.critical }}</div><div class="card-label">Critical CVEs</div></div>
+{% if summary.services == 0 %}
+{# ── Empty state: onboarding flow ── #}
+<div class="section onboarding">
+    <div class="onboarding-tagline">Get started in 30 seconds</div>
+    <div class="onboarding-sub">Three steps to your first vulnerability scan.</div>
+
+    <div class="onboarding-steps">
+        <div class="onboarding-step">
+            <div class="step-number">1</div>
+            <div class="step-icon"><i class="fa-solid fa-file-code"></i></div>
+            <div class="step-title">Generate an SBOM</div>
+            <div class="step-desc">
+                Run Syft (or any CycloneDX tool) in your project directory:
+                <code class="step-code">syft . -o cyclonedx-json &gt; bom.json</code>
+            </div>
+        </div>
+
+        <div class="onboarding-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+        <div class="onboarding-step">
+            <div class="step-number">2</div>
+            <div class="step-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <div class="step-title">Upload it</div>
+            <div class="step-desc">
+                Drag and drop your SBOM file or paste it on the upload page.
+            </div>
+            <a href="/dashboard/upload" class="step-link">Upload SBOM</a>
+        </div>
+
+        <div class="onboarding-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+        <div class="onboarding-step">
+            <div class="step-number">3</div>
+            <div class="step-icon"><i class="fa-solid fa-arrows-rotate"></i></div>
+            <div class="step-title">Scan for vulnerabilities</div>
+            <div class="step-desc">
+                SeeviePri scans your dependencies automatically on upload. Hit Rescan to refresh at any time.
+            </div>
+        </div>
+    </div>
 </div>
 
-{% if summary.total_findings > 0 %}
-<div class="section">
-    <div class="section-title">Severity Breakdown</div>
-    {% set counts = summary.severity_counts %}
-    {% set total = summary.total_findings %}
-    <div class="severity-bar">
-        {% if counts.get('CRITICAL', 0) %}<div class="seg-critical" style="width:{{ (counts.CRITICAL / total * 100)|round }}%"></div>{% endif %}
-        {% if counts.get('HIGH', 0) %}<div class="seg-high" style="width:{{ (counts.HIGH / total * 100)|round }}%"></div>{% endif %}
-        {% if counts.get('MEDIUM', 0) or counts.get('MODERATE', 0) %}<div class="seg-medium" style="width:{{ ((counts.get('MEDIUM', 0) + counts.get('MODERATE', 0)) / total * 100)|round }}%"></div>{% endif %}
-        {% if counts.get('LOW', 0) %}<div class="seg-low" style="width:{{ (counts.LOW / total * 100)|round }}%"></div>{% endif %}
-        {% if counts.get('UNKNOWN', 0) %}<div class="seg-unknown" style="width:{{ (counts.UNKNOWN / total * 100)|round }}%"></div>{% endif %}
+{% else %}
+{# ── Executive Summary Banner ── #}
+{% if summary.critical > 0 %}
+<div class="exec-banner banner-critical">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span>Your environment has <strong>{{ summary.critical }} critical vulnerabilit{{ 'y' if summary.critical == 1 else 'ies' }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>. Immediate review recommended.</span>
+</div>
+{% elif summary.total_findings > 0 %}
+<div class="exec-banner banner-warn">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>Your environment has <strong>{{ summary.total_findings }} finding{{ 's' if summary.total_findings != 1 }}</strong> across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>. No critical vulnerabilities detected.</span>
+</div>
+{% else %}
+<div class="exec-banner banner-clear">
+    <i class="fa-solid fa-circle-check"></i>
+    <span>All clear. No known vulnerabilities detected across <strong>{{ summary.services }} service{{ 's' if summary.services != 1 }}</strong>.</span>
+</div>
+{% endif %}
+
+{# ── Summary Cards ── #}
+<div class="cards">
+    <div class="card">
+        <div class="card-icon ic-findings"><i class="fa-solid fa-bug"></i></div>
+        <div class="card-value critical">{{ summary.total_findings }}</div>
+        <div class="card-label">Total Findings</div>
     </div>
-    <div class="severity-legend">
-        <span class="l-critical">Critical {{ counts.get('CRITICAL', 0) }}</span>
-        <span class="l-high">High {{ counts.get('HIGH', 0) }}</span>
-        <span class="l-medium">Medium {{ counts.get('MEDIUM', 0) + counts.get('MODERATE', 0) }}</span>
-        <span class="l-low">Low {{ counts.get('LOW', 0) }}</span>
+    <div class="card">
+        <div class="card-icon ic-high"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="card-value high">{{ summary.high_risk }}</div>
+        <div class="card-label">High Risk</div>
+    </div>
+    <div class="card">
+        <div class="card-icon ic-services"><i class="fa-solid fa-cubes"></i></div>
+        <div class="card-value success">{{ summary.services }}</div>
+        <div class="card-label">Services</div>
+    </div>
+    <div class="card">
+        <div class="card-icon ic-critical"><i class="fa-solid fa-skull-crossbones"></i></div>
+        <div class="card-value info">{{ summary.critical }}</div>
+        <div class="card-label">Critical CVEs</div>
+    </div>
+</div>
+
+{# ── Charts ── #}
+{% if summary.total_findings > 0 %}
+{% set counts = summary.severity_counts %}
+{% set med_count = counts.get('MEDIUM', 0) + counts.get('MODERATE', 0) %}
+<div class="charts-row">
+    <div class="chart-donut-wrap section">
+        <div class="section-title">Severity Breakdown</div>
+        <div class="donut-container">
+            <canvas id="severityDonut"></canvas>
+            <div class="donut-center-label">
+                <span class="donut-total">{{ summary.total_findings }}</span>
+                <span class="donut-subtitle">Findings</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-bar-wrap section">
+        <div class="section-title">Risk by Service</div>
+        <div style="position:relative; height:{{ [180, summary.service_findings|length * 36 + 40]|max }}px;">
+            <canvas id="serviceBar"></canvas>
+        </div>
     </div>
 </div>
 {% endif %}
 
+{# ── Service Table ── #}
 <div class="section">
     <div class="section-title">Findings by Service</div>
     <table>
@@ -52,4 +323,121 @@
         </tbody>
     </table>
 </div>
+{% endif %}
+
+{# ── Chart.js Scripts ── #}
+{% if summary.services > 0 and summary.total_findings > 0 %}
+{% set counts = summary.severity_counts %}
+{% set med_count = counts.get('MEDIUM', 0) + counts.get('MODERATE', 0) %}
+<script>
+(function() {
+    // ── Severity Donut ──
+    var donutCtx = document.getElementById('severityDonut').getContext('2d');
+    var sevLabels = [];
+    var sevData = [];
+    var sevColors = [];
+
+    var segments = [
+        { label: 'Critical', value: {{ counts.get('CRITICAL', 0) }}, color: '#e94560' },
+        { label: 'High',     value: {{ counts.get('HIGH', 0) }},     color: '#ff6b6b' },
+        { label: 'Medium',   value: {{ med_count }},                  color: '#ffa502' },
+        { label: 'Low',      value: {{ counts.get('LOW', 0) }},      color: '#4ecdc4' },
+        { label: 'Unknown',  value: {{ counts.get('UNKNOWN', 0) }},  color: '#555555' }
+    ];
+
+    segments.forEach(function(s) {
+        if (s.value > 0) {
+            sevLabels.push(s.label);
+            sevData.push(s.value);
+            sevColors.push(s.color);
+        }
+    });
+
+    new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+            labels: sevLabels,
+            datasets: [{
+                data: sevData,
+                backgroundColor: sevColors,
+                borderColor: '#12122a',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            cutout: '65%',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#888',
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        padding: 12,
+                        usePointStyle: true,
+                        pointStyleWidth: 10
+                    }
+                }
+            }
+        }
+    });
+
+    // ── Risk by Service Bar ──
+    var barCtx = document.getElementById('serviceBar').getContext('2d');
+    var sevColorMap = {
+        'CRITICAL': '#e94560',
+        'HIGH': '#ff6b6b',
+        'MEDIUM': '#ffa502',
+        'MODERATE': '#ffa502',
+        'LOW': '#4ecdc4',
+        'UNKNOWN': '#555555'
+    };
+
+    var serviceNames = [];
+    var serviceCounts = [];
+    var serviceBarColors = [];
+
+    {% for s in summary.service_findings %}
+    serviceNames.push('{{ s.name|e }}');
+    serviceCounts.push({{ s.finding_count }});
+    serviceBarColors.push(sevColorMap['{{ s.worst_severity }}'] || '#555555');
+    {% endfor %}
+
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: serviceNames,
+            datasets: [{
+                label: 'Findings',
+                data: serviceCounts,
+                backgroundColor: serviceBarColors,
+                borderRadius: 4,
+                barThickness: serviceNames.length > 12 ? 14 : 22
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { color: '#888', font: { family: "'JetBrains Mono', monospace", size: 11 }, precision: 0 },
+                    grid: { color: '#1e1e3a' }
+                },
+                y: {
+                    ticks: { color: '#ccc', font: { family: "'Inter', sans-serif", size: 12 } },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+})();
+</script>
+{% endif %}
 {% endblock %}

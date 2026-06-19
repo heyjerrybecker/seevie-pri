@@ -35,7 +35,7 @@ def test_dashboard_overview(tmp_path):
     resp = client.get("/dashboard/")
     assert resp.status_code == 200
     assert "SeeviePri" in resp.text
-    assert "Total Findings" in resp.text
+    assert "Get started" in resp.text
 
 
 def test_dashboard_services(tmp_path):

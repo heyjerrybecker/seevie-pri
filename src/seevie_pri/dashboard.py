@@ -56,6 +56,54 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
             "findings": findings,
         })
 
+    @router.get("/services/{sbom_id}/graph")
+    def service_graph(sbom_id: str):
+        sboms = list_sboms(conn)
+        sbom = next((s for s in sboms if s["id"] == sbom_id), None)
+        if not sbom:
+            return {"nodes": [], "edges": []}
+
+        sbom_path = Path(sbom["sbom_path"])
+        if not sbom_path.exists():
+            return {"nodes": [], "edges": []}
+
+        ctx = TriageContext(sbom_path=sbom_path)
+        ctx = parse(ctx)
+
+        findings_list = get_findings_for_sbom(conn, sbom_id)
+        vuln_components = {f["component"] for f in findings_list}
+        finding_counts = {}
+        for f in findings_list:
+            finding_counts[f["component"]] = finding_counts.get(f["component"], 0) + 1
+
+        nodes = []
+        for node_id in ctx.graph.nodes:
+            comp = ctx.graph.nodes[node_id].get("component")
+            if not comp:
+                continue
+            is_vuln = comp.name in vuln_components
+            nodes.append({
+                "id": node_id,
+                "label": comp.name.split(":")[-1] if ":" in comp.name else comp.name,
+                "title": f"{comp.name}@{comp.version}",
+                "color": "#e94560" if is_vuln else "#4ecdc4" if comp.direct else "#2a5a6a",
+                "size": 15 + (finding_counts.get(comp.name, 0) * 5) if is_vuln else 10,
+                "font": {"color": "#e0e0e0"},
+                "borderWidth": 2 if is_vuln else 1,
+                "borderWidthSelected": 3,
+            })
+
+        edges = []
+        for u, v in ctx.graph.edges:
+            edges.append({
+                "from": u,
+                "to": v,
+                "arrows": "to",
+                "color": {"color": "#1e1e3a", "highlight": "#4ecdc4"},
+            })
+
+        return {"nodes": nodes, "edges": edges}
+
     @router.get("/findings", response_class=HTMLResponse)
     def findings_page(request: Request, severity: str | None = None,
                       min_score: float | None = None):
