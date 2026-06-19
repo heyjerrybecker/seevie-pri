@@ -132,13 +132,9 @@
             </a>
         </div>
         <div>
-            <button class="rescan-btn"
-                    hx-post="/dashboard/_rescan"
-                    hx-target="#rescan-result"
-                    hx-indicator="#rescan-spinner">
-                <span class="nav-icon"><i class="fa-solid fa-arrows-rotate"></i></span>
+            <button class="rescan-btn" onclick="doRescan(this)">
+                <span class="nav-icon"><i class="fa-solid fa-arrows-rotate" id="rescan-icon"></i></span>
                 <span class="rescan-text">Rescan Now</span>
-                <span id="rescan-spinner" class="htmx-indicator"><span class="spinner"></span></span>
             </button>
             <div id="rescan-result" class="rescan-result"></div>
         </div>
@@ -150,6 +146,24 @@
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('collapsed');
             document.body.classList.toggle('sidebar-collapsed');
+        }
+        function doRescan(btn) {
+            btn.disabled = true;
+            var icon = document.getElementById('rescan-icon');
+            var result = document.getElementById('rescan-result');
+            icon.classList.add('fa-spin');
+            result.textContent = 'Scanning...';
+            fetch('/dashboard/_rescan', {method: 'POST'})
+                .then(function(r) { return r.text(); })
+                .then(function(html) {
+                    result.innerHTML = html;
+                    setTimeout(function() { location.reload(); }, 1500);
+                })
+                .catch(function() {
+                    result.textContent = 'Scan failed. Try again.';
+                    btn.disabled = false;
+                    icon.classList.remove('fa-spin');
+                });
         }
     </script>
 </body>
