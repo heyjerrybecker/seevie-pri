@@ -65,6 +65,26 @@ org.apache.logging.log4j:log4j-core @ 2.14.1 — CRITICAL
  ...
 ```
 
+## Generating SBOMs
+
+SeeviePri consumes SBOMs — it doesn't generate them. Use any standard tool:
+
+```bash
+# Syft (Anchore) — scans directories, containers, archives
+brew install syft
+syft /path/to/project -o cyclonedx-json > bom.json
+
+# Trivy (Aqua) — similar capabilities
+brew install trivy
+trivy fs /path/to/project --format cyclonedx --output bom.json
+
+# CycloneDX CLI — language-specific, deeper dependency resolution
+pip install cyclonedx-bom
+cyclonedx-py environment -o bom.json
+```
+
+**SBOM quality matters.** Tools like `syft` produce flat component lists (good for detection), while build-tool-integrated generators (like `cyclonedx-py`, `cyclonedx-maven-plugin`, or `@cyclonedx/cdxgen`) include full dependency trees. SeeviePri's topology scoring is most valuable with dependency tree data — a flat SBOM still works, but the risk differentiation between components will be limited.
+
 ## Architecture
 
 Pipeline of 5 swappable stages:
