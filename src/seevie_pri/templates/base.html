@@ -152,7 +152,7 @@
             var icon = document.getElementById('rescan-icon');
             var result = document.getElementById('rescan-result');
             icon.classList.add('fa-spin');
-            result.textContent = 'Scanning...';
+            result.textContent = 'Scanning all services — this usually takes ~20s...';
             fetch('/dashboard/_rescan', {method: 'POST'})
                 .then(function(r) { return r.text(); })
                 .then(function(html) {
