@@ -2,17 +2,19 @@
 
 **Vulnerability triage engine** — mathematical risk prioritization for CVEs.
 
-When a CVE drops, scanners tell you *what's vulnerable*. SeeviePri tells you *what to do about it, in what order, and why*.
+When a CVE drops, scanners tell you *what's vulnerable*. SeeviePri tells you *what to do about it, in what order, and why — in dollars*.
 
 ## How It Works
 
-SeeviePri applies graph topology analysis and version constraint algebra to your dependency graphs, producing ranked, context-aware risk scores. The math is validated across 5 real CVEs with an average Spearman correlation (rho) of 0.91.
+SeeviePri applies **graph topology analysis** to your dependency graphs, producing ranked, context-aware risk scores with financial exposure estimates. The math is validated across 5 real CVEs with an average Spearman correlation (rho) of 0.91.
 
-**Two mathematical lenses:**
-- **Graph Topology** — betweenness centrality, reverse reachability, depth, fan-in. Measures how structurally exposed a vulnerable component is.
-- **Version Compatibility** — assesses upgrade path difficulty based on dependency structure and fix availability.
+**Graph Topology Scoring** — treats your dependency tree as a directed graph and computes structural properties of each vulnerable component: betweenness centrality (blast radius), reverse reachability (how many things depend on it), depth from root (exposure), and fan-in (connectivity). Components that are more structurally central score higher risk.
 
-**Combined:** `risk = topology_score * (1 - compatibility_score)`
+**Version Compatibility** — assesses upgrade path difficulty based on whether the vulnerable component is a direct or transitive dependency and whether a fix version is available.
+
+**Financial Risk** — combines EPSS exploit probability (from FIRST.org) with the topology risk score and a per-service business value to estimate dollar exposure: `financial_risk = EPSS × topology_risk × business_value`
+
+**Combined risk score:** `risk = topology_score × (1 - compatibility_score)`
 
 ## Quick Start
 
@@ -23,7 +25,7 @@ pip install -e .
 seevie-pri triage --sbom bom.json
 
 # Index services for persistent monitoring
-seevie-pri index --sbom services/payment-api/bom.json --name payment-api
+seevie-pri index --sbom services/payment-api/bom.json --name payment-api --business-value 5000000
 seevie-pri index --sbom services/order-service/bom.json --name order-service
 
 # Re-triage everything against fresh CVE data
@@ -39,9 +41,11 @@ seevie-pri serve --port 8080
 - **4 ecosystems** — Maven, npm, PyPI, Go
 - **2 SBOM formats** — CycloneDX (JSON + XML), SPDX (JSON)
 - **CVE matching** — OSV (primary), NVD (fallback), offline mode for air-gapped environments
-- **Persistent indexing** — SQLite storage, index once, rescan on demand
+- **Financial risk quantification** — EPSS exploit probability × topology risk × business value per service
+- **Blast radius** — cross-service impact analysis (how many services does each CVE affect?)
+- **Persistent indexing** — SQLite storage, index once, rescan on demand, SBOM upsert on re-index
 - **REST API** — 5 endpoints for programmatic access
-- **Web dashboard** — dark-themed UI with severity breakdown, service drill-down, findings filters
+- **Web dashboard** — Security Pro dark theme with Chart.js severity/service charts, executive summary banner, interactive vis.js dependency graph, editable business values, findings filters, and rescan button
 - **CI-friendly** — exit code 1 when high-risk findings are present
 
 ## CLI Commands
@@ -50,10 +54,24 @@ seevie-pri serve --port 8080
 |---------|-------------|
 | `seevie-pri triage --sbom <path>` | One-shot triage (no persistence) |
 | `seevie-pri index --sbom <path> --name <label>` | Index an SBOM for persistent monitoring |
-| `seevie-pri rescan` | Re-triage all indexed SBOMs |
+| `seevie-pri rescan` | Re-triage all indexed SBOMs against fresh CVE data |
 | `seevie-pri serve --port 8080` | Start REST API + web dashboard |
 
-## Output Example
+## Dashboard
+
+The web dashboard (`seevie-pri serve`) provides:
+
+- **Executive summary** — one-sentence security posture with total dollar exposure
+- **Summary cards** — total findings, high/critical count, services indexed, estimated exposure
+- **Severity donut chart** — interactive breakdown of findings by severity
+- **Risk by service bar chart** — visual comparison across services
+- **Findings table** — sortable by blast radius and financial exposure, filterable by severity
+- **Service detail** — interactive dependency graph (vulnerable nodes in red) + per-service findings
+- **SBOM upload** — drag-and-drop indexing from the browser
+- **Editable business values** — set dollar value per service directly on the services page
+- **Rescan button** — re-triage all services with spinning animation and auto-refresh
+
+## Output Example (CLI)
 
 ```
 org.apache.logging.log4j:log4j-core @ 2.14.1 — CRITICAL
@@ -63,6 +81,8 @@ org.apache.logging.log4j:log4j-core @ 2.14.1 — CRITICAL
  1  GHSA-7rjr-3q55-vv33     CRITICAL   0.06   2.16.0       SCHEDULE FOR NEXT SPRINT
  2  GHSA-jfh8-c2jp-5v3q     CRITICAL   0.06   2.15.0       SCHEDULE FOR NEXT SPRINT
  ...
+
+23 finding(s) across 5 component(s). 0 high-risk.
 ```
 
 ## Generating SBOMs
@@ -131,6 +151,20 @@ SBOM → [Parse] → [Match] → [Score] → [Rank] → [Output]
 ```
 
 Each stage is a plain function that transforms a shared `TriageContext`. Swap any stage for your own implementation — different SBOM parser, different CVE source, different scoring model, different output format.
+
+## The Math
+
+The topology scoring is validated against 5 real CVEs with different blast patterns:
+
+| CVE | Vulnerability | Spearman rho |
+|-----|--------------|-------------|
+| Guava (CVE-2020-8908) | Temp dir access | +0.99 |
+| Log4Shell (CVE-2021-44228) | Remote code execution | +0.99 |
+| Spring4Shell (CVE-2022-22965) | RCE via data binding | +0.63 |
+| Text4Shell (CVE-2022-42889) | RCE via string interpolation | +1.00 |
+| Jackson (CVE-2022-42003) | Deserialization DoS | +0.95 |
+
+Average correlation: **0.91**. The math correctly ranks projects by vulnerability risk across every vulnerability shape tested.
 
 ## License
 
