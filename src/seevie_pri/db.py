@@ -168,7 +168,7 @@ def clear_findings(conn: sqlite3.Connection) -> None:
 def get_summary(conn: sqlite3.Connection) -> dict:
     total = conn.execute("SELECT COUNT(*) FROM findings").fetchone()[0]
     high_risk = conn.execute(
-        "SELECT COUNT(*) FROM findings WHERE combined_score >= 0.7"
+        "SELECT COUNT(*) FROM findings WHERE severity IN ('HIGH', 'CRITICAL')"
     ).fetchone()[0]
     services = conn.execute("SELECT COUNT(*) FROM sboms").fetchone()[0]
     critical = conn.execute(
