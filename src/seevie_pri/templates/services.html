@@ -9,15 +9,48 @@
     <a href="/dashboard/upload" class="btn btn-primary">Upload SBOM</a>
 </div>
 <table>
-    <thead><tr><th>Name</th><th>Ecosystem</th><th>Components</th><th>Indexed</th></tr></thead>
+    <thead><tr><th>Name</th><th>Ecosystem</th><th>Components</th><th>Business Value</th><th>Indexed</th></tr></thead>
     <tbody>
     {% for s in sboms %}
-    <tr onclick="location.href='/dashboard/services/{{ s.id }}'">
-        <td>{{ s.name }}</td><td>{{ s.ecosystem }}</td><td>{{ s.component_count }}</td><td>{{ s.indexed_at[:10] }}</td>
+    <tr>
+        <td><a href="/dashboard/services/{{ s.id }}" style="color:#4ecdc4;text-decoration:none;">{{ s.name }}</a></td>
+        <td>{{ s.ecosystem }}</td>
+        <td>{{ s.component_count }}</td>
+        <td onclick="event.stopPropagation();" style="min-width:140px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+                <span style="color:#888;">$</span>
+                <input type="text"
+                       value="{{ '{:,.0f}'.format(s.business_value or 1000000) }}"
+                       data-sbom-id="{{ s.id }}"
+                       onchange="updateBusinessValue(this)"
+                       style="background:#0a0a1a;border:1px solid #1e1e3a;border-radius:4px;padding:4px 8px;color:#ffa502;font-family:'JetBrains Mono',monospace;font-size:12px;width:110px;text-align:right;">
+            </div>
+        </td>
+        <td>{{ s.indexed_at[:10] }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="4" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
+    <tr><td colspan="5" class="empty-state">No services indexed. <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>.</td></tr>
     {% endfor %}
     </tbody>
 </table>
+<script>
+function updateBusinessValue(input) {
+    var raw = input.value.replace(/[,$]/g, '');
+    var value = parseFloat(raw);
+    if (isNaN(value)) return;
+    var sbomId = input.dataset.sbomId;
+    input.style.borderColor = '#ffa502';
+    fetch('/dashboard/_update_business_value', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sbom_id: sbomId, business_value: value})
+    }).then(function(r) {
+        if (r.ok) {
+            input.value = value.toLocaleString('en-US', {maximumFractionDigits: 0});
+            input.style.borderColor = '#4ecdc4';
+            setTimeout(function() { input.style.borderColor = '#1e1e3a'; }, 1500);
+        }
+    });
+}
+</script>
 {% endblock %}

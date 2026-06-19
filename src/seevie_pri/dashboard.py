@@ -15,6 +15,7 @@ from seevie_pri.db import (
     list_sboms,
     clear_findings,
     store_findings,
+    update_business_value,
 )
 from seevie_pri.context import TriageContext
 from seevie_pri.pipeline import run
@@ -187,5 +188,11 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
             f'<span>Scanned {len(sboms)} service(s). {total} finding(s), '
             f'{high} high/critical. {exp_str} total exposure.</span>'
         )
+
+    @router.post("/_update_business_value")
+    async def update_bv(request: Request):
+        data = await request.json()
+        update_business_value(conn, data["sbom_id"], data["business_value"])
+        return {"status": "updated"}
 
     return router

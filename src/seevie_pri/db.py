@@ -113,11 +113,20 @@ def store_components(conn: sqlite3.Connection, sbom_id: str,
 def list_sboms(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT s.id, s.name, s.ecosystem, s.sbom_path, s.indexed_at, "
-        "COUNT(c.id) as component_count "
+        "s.business_value, COUNT(c.id) as component_count "
         "FROM sboms s LEFT JOIN components c ON s.id = c.sbom_id "
         "GROUP BY s.id ORDER BY s.indexed_at DESC"
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def update_business_value(conn: sqlite3.Connection, sbom_id: str,
+                          business_value: float) -> None:
+    conn.execute(
+        "UPDATE sboms SET business_value = ? WHERE id = ?",
+        (business_value, sbom_id),
+    )
+    conn.commit()
 
 
 def store_findings(conn: sqlite3.Connection, sbom_id: str,
