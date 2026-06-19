@@ -128,16 +128,19 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
         rows = ""
         for f in findings:
             sev = f["severity"].lower()
+            br = f.get("blast_radius", 1)
+            br_bg = "#e9456030" if br >= 3 else "#ffa50230" if br >= 2 else "#1e1e3a"
             rows += (
-                f'<tr><td>{f["cve_id"]}</td>'
+                f'<tr><td style="font-family:\'JetBrains Mono\',monospace;font-size:12px;">{f["cve_id"]}</td>'
                 f'<td><span class="badge {sev}">{f["severity"]}</span></td>'
+                f'<td style="text-align:center;"><span style="background:{br_bg};padding:3px 10px;border-radius:10px;font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:600;">{br} svc{"s" if br != 1 else ""}</span></td>'
                 f'<td>{f["component"]}</td>'
                 f'<td>{f["sbom_name"]}</td>'
                 f'<td>{f["combined_score"]:.2f}</td>'
                 f'<td>{f["fixed_version"] or "—"}</td>'
                 f'<td>{f["action"]}</td></tr>'
             )
-        return HTMLResponse(rows if rows else '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">No findings match the current filters.</td></tr>')
+        return HTMLResponse(rows if rows else '<tr><td colspan="8" style="text-align:center;color:#888;padding:24px;">No findings match the current filters.</td></tr>')
 
     @router.post("/_rescan", response_class=HTMLResponse)
     def rescan_partial():

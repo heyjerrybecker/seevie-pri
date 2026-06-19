@@ -132,7 +132,10 @@ def store_findings(conn: sqlite3.Connection, sbom_id: str,
 def get_findings(conn: sqlite3.Connection, severity: str | None = None,
                  min_score: float | None = None) -> list[dict]:
     query = (
-        "SELECT f.*, s.name as sbom_name FROM findings f "
+        "SELECT f.*, s.name as sbom_name, "
+        "(SELECT COUNT(DISTINCT f2.sbom_id) FROM findings f2 WHERE f2.cve_id = f.cve_id) "
+        "as blast_radius "
+        "FROM findings f "
         "JOIN sboms s ON f.sbom_id = s.id WHERE 1=1"
     )
     params: list = []
@@ -142,7 +145,7 @@ def get_findings(conn: sqlite3.Connection, severity: str | None = None,
     if min_score is not None:
         query += " AND f.combined_score >= ?"
         params.append(min_score)
-    query += " ORDER BY f.combined_score DESC"
+    query += " ORDER BY blast_radius DESC, f.combined_score DESC"
     rows = conn.execute(query, params).fetchall()
     return [dict(r) for r in rows]
 
