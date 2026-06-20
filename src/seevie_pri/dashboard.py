@@ -202,6 +202,8 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
 
                 node_key = f"{prefix}:{node_id}"
                 is_vuln = comp.name in vuln_components
+                downstream = len(nx.descendants(ctx.graph, node_id))
+                upstream = len(nx.ancestors(ctx.graph, node_id))
 
                 all_nodes.append({
                     "id": node_key,
@@ -212,6 +214,13 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
                     "size": 8,
                     "font": {"color": "#e0e0e0", "size": 9},
                     "borderWidth": 1,
+                    "fullName": comp.name,
+                    "version": comp.version,
+                    "service": prefix,
+                    "downstream": downstream,
+                    "upstream": upstream,
+                    "isDirect": comp.direct,
+                    "isVuln": is_vuln,
                 })
 
                 if comp.direct:

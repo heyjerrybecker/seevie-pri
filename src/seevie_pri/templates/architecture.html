@@ -6,60 +6,78 @@
     .insight-card { background: #12122a; border: 1px solid #1e1e3a; border-radius: 8px; padding: 20px; display: flex; gap: 14px; align-items: flex-start; transition: all 0.2s ease; }
     .insight-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     .insight-icon { font-size: 20px; min-width: 28px; text-align: center; padding-top: 2px; }
-    .insight-icon.ic-shared { color: #ffa502; }
-    .insight-icon.ic-critical { color: #e94560; }
-    .insight-icon.ic-isolated { color: #4ecdc4; }
-    .insight-icon.ic-concentration { color: #45b7d1; }
+    .insight-icon.ic-risk { color: #e94560; }
+    .insight-icon.ic-center { color: #ffa502; }
+    .insight-icon.ic-safe { color: #4ecdc4; }
+    .insight-icon.ic-chain { color: #45b7d1; }
     .insight-text { font-size: 13px; line-height: 1.6; color: #aaa; }
     .insight-text strong { color: #fff; }
-    .insight-text .highlight { color: #ffa502; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .insight-text .hl { color: #ffa502; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+    .impact-panel { display: none; background: #12122a; border: 1px solid #1e1e3a; border-radius: 8px; padding: 20px; margin-top: 16px; animation: fadeIn 0.2s ease; }
+    .impact-panel.visible { display: block; }
+    .impact-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .impact-header h3 { font-size: 16px; color: #fff; font-family: 'JetBrains Mono', monospace; }
+    .impact-close { background: none; border: none; color: #888; cursor: pointer; font-size: 18px; }
+    .impact-close:hover { color: #e94560; }
+    .impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .impact-stat { background: #0a0a1a; border-radius: 6px; padding: 14px; text-align: center; }
+    .impact-stat .val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; }
+    .impact-stat .lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+    .impact-narrative { font-size: 13px; line-height: 1.6; color: #aaa; padding: 12px; background: #0a0a1a; border-radius: 6px; border-left: 3px solid #ffa502; }
+    .impact-narrative strong { color: #fff; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
 <div class="page-header">
     <h1>Architecture Risk</h1>
-    <p>Cross-service structural analysis — shared dependencies, concentration risk, and blast radius</p>
+    <p>Cross-service structural analysis — click any node to see its impact</p>
 </div>
 
 {% if insights %}
 <div class="insight-cards">
     {% if insights.most_shared %}
     <div class="insight-card">
-        <div class="insight-icon ic-shared"><i class="fa-solid fa-link"></i></div>
+        <div class="insight-icon ic-risk"><i class="fa-solid fa-fire"></i></div>
         <div class="insight-text">
-            <strong>{{ insights.most_shared.name }}</strong> appears in
-            <span class="highlight">{{ insights.most_shared.count }} of {{ insights.total_services }}</span> services.
-            A CVE in this dependency affects {{ insights.most_shared.pct }}% of your portfolio.
+            <strong>Your biggest shared risk:</strong>
+            <span class="hl">{{ insights.most_shared.name }}</span> lives in
+            {{ insights.most_shared.count }} of {{ insights.total_services }} services.
+            If a CVE hits this dependency, <strong>{{ insights.most_shared.pct }}% of your portfolio is exposed</strong>.
         </div>
     </div>
     {% endif %}
 
     {% if insights.most_central %}
     <div class="insight-card">
-        <div class="insight-icon ic-critical"><i class="fa-solid fa-bullseye"></i></div>
+        <div class="insight-icon ic-center"><i class="fa-solid fa-bullseye"></i></div>
         <div class="insight-text">
-            <strong>Most structurally critical:</strong>
-            <span class="highlight">{{ insights.most_central.name }}</span>
-            has the highest betweenness centrality across your portfolio — it sits on more dependency paths than any other component.
+            <strong>Structural chokepoint:</strong>
+            <span class="hl">{{ insights.most_central.name }}</span> sits at the center of your dependency web.
+            More dependency paths flow through this component than any other — a vulnerability here would cascade the farthest.
         </div>
     </div>
     {% endif %}
 
     {% if insights.least_connected %}
     <div class="insight-card">
-        <div class="insight-icon ic-isolated"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="insight-icon ic-safe"><i class="fa-solid fa-shield-halved"></i></div>
         <div class="insight-text">
-            <strong>{{ insights.least_connected.name }}</strong> has the fewest shared dependencies —
-            lowest blast radius in your portfolio. {{ insights.least_connected.shared }} shared dep{{ 's' if insights.least_connected.shared != 1 }}.
+            <strong>Best isolated:</strong>
+            <span class="hl">{{ insights.least_connected.name }}</span> shares only {{ insights.least_connected.shared }}
+            dependenc{{ 'y' if insights.least_connected.shared == 1 else 'ies' }} with other services — a vulnerability here stays contained.
+            {% if insights.least_connected.shared <= 1 %}Good architectural discipline.{% endif %}
         </div>
     </div>
     {% endif %}
 
     <div class="insight-card">
-        <div class="insight-icon ic-concentration"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="insight-icon ic-chain"><i class="fa-solid fa-link"></i></div>
         <div class="insight-text">
             <strong>Supply chain concentration:</strong>
-            <span class="highlight">{{ insights.shared_count }}</span> dependencies are shared across multiple services
-            ({{ insights.concentration_pct }}% of total). {% if insights.concentration_pct > 30 %}Consider diversification to reduce correlated risk.{% else %}Healthy diversification level.{% endif %}
+            <span class="hl">{{ insights.shared_count }}</span> dependencies are shared across services
+            ({{ insights.concentration_pct }}% of your total).
+            {% if insights.concentration_pct > 30 %}That's high — a single compromised library could ripple across your portfolio.{% else %}Healthy level of diversification.{% endif %}
         </div>
     </div>
 </div>
@@ -98,16 +116,44 @@
         <span style="margin-left: 12px; color: #ffa502;">&#9670;</span> Service
         <span style="margin-left: 12px; color: #45b7d1;">&#9679;</span> Shared dependency
         <span style="margin-left: 12px; color: #2a5a6a;">&#9679;</span> Single-service dependency
+        <span style="margin-left: 16px; color: #888;">Click any node for impact analysis</span>
     </p>
 </div>
 
+<div id="impact-panel" class="impact-panel">
+    <div class="impact-header">
+        <h3 id="impact-title"></h3>
+        <button class="impact-close" onclick="closeImpact()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="impact-grid">
+        <div class="impact-stat"><div class="val" id="impact-downstream" style="color:#e94560;">-</div><div class="lbl">Downstream Deps</div></div>
+        <div class="impact-stat"><div class="val" id="impact-upstream" style="color:#ffa502;">-</div><div class="lbl">Upstream Dependents</div></div>
+        <div class="impact-stat"><div class="val" id="impact-services" style="color:#45b7d1;">-</div><div class="lbl">Services Affected</div></div>
+        <div class="impact-stat"><div class="val" id="impact-type" style="color:#4ecdc4;">-</div><div class="lbl">Dependency Type</div></div>
+    </div>
+    <div class="impact-narrative" id="impact-narrative"></div>
+</div>
+
 <script>
+var graphData = null;
+var compServiceMap = {};
+
 fetch('/dashboard/architecture/graph')
     .then(function(r) { return r.json(); })
     .then(function(data) {
+        graphData = data;
         if (data.nodes.length === 0) return;
+
+        // Build comp→services lookup
+        data.nodes.forEach(function(n) {
+            if (n.fullName) {
+                if (!compServiceMap[n.fullName]) compServiceMap[n.fullName] = new Set();
+                compServiceMap[n.fullName].add(n.service);
+            }
+        });
+
         var container = document.getElementById('arch-graph');
-        new vis.Network(container, {
+        var network = new vis.Network(container, {
             nodes: new vis.DataSet(data.nodes),
             edges: new vis.DataSet(data.edges)
         }, {
@@ -130,6 +176,64 @@ fetch('/dashboard/architecture/graph')
                 tooltipDelay: 100
             }
         });
+
+        network.on('click', function(params) {
+            if (params.nodes.length === 0) { closeImpact(); return; }
+            var nodeId = params.nodes[0];
+            var node = data.nodes.find(function(n) { return n.id === nodeId; });
+            if (node) showImpact(node);
+        });
     });
+
+function showImpact(node) {
+    var panel = document.getElementById('impact-panel');
+    var isService = node.shape === 'diamond';
+
+    document.getElementById('impact-title').textContent = isService
+        ? node.label + ' (service)'
+        : (node.fullName || node.label) + '@' + (node.version || '');
+
+    if (isService) {
+        var svcNodes = graphData.nodes.filter(function(n) { return n.service === node.label && n.fullName; });
+        var vulnCount = svcNodes.filter(function(n) { return n.isVuln; }).length;
+        document.getElementById('impact-downstream').textContent = svcNodes.length;
+        document.getElementById('impact-upstream').textContent = '—';
+        document.getElementById('impact-services').textContent = '1';
+        document.getElementById('impact-type').textContent = 'Service';
+        document.getElementById('impact-narrative').innerHTML =
+            '<strong>' + node.label + '</strong> has <strong>' + svcNodes.length + ' dependencies</strong>. ' +
+            (vulnCount > 0
+                ? '<span style="color:#e94560;">' + vulnCount + ' component(s) have known vulnerabilities.</span>'
+                : '<span style="color:#4ecdc4;">No known vulnerabilities in its dependency tree.</span>');
+    } else {
+        var svcCount = compServiceMap[node.fullName] ? compServiceMap[node.fullName].size : 1;
+        var svcNames = compServiceMap[node.fullName] ? Array.from(compServiceMap[node.fullName]).join(', ') : node.service;
+        document.getElementById('impact-downstream').textContent = node.downstream || 0;
+        document.getElementById('impact-upstream').textContent = node.upstream || 0;
+        document.getElementById('impact-services').textContent = svcCount;
+        document.getElementById('impact-type').textContent = node.isDirect ? 'Direct' : 'Transitive';
+
+        var narrative = '<strong>' + node.label + '</strong> ';
+        if (node.isVuln) {
+            narrative += 'has <span style="color:#e94560;">known vulnerabilities</span>. ';
+        }
+        if (svcCount > 1) {
+            narrative += 'is shared across <strong>' + svcCount + ' services</strong> (' + svcNames + '). ';
+            narrative += 'A vulnerability here would affect <strong>' + Math.round(svcCount / graphData.nodes.filter(function(n){return n.shape==="diamond";}).length * 100) + '% of your portfolio</strong>. ';
+        }
+        if ((node.downstream || 0) > 0) {
+            narrative += 'It has <strong>' + node.downstream + ' downstream dependenc' + (node.downstream === 1 ? 'y' : 'ies') + '</strong> — if it breaks, they break too.';
+        } else {
+            narrative += 'It is a leaf dependency with no downstream impact.';
+        }
+        document.getElementById('impact-narrative').innerHTML = narrative;
+    }
+
+    panel.classList.add('visible');
+}
+
+function closeImpact() {
+    document.getElementById('impact-panel').classList.remove('visible');
+}
 </script>
 {% endblock %}
