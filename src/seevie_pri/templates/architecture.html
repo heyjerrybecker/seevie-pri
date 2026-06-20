@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Architecture Risk{% endblock %}
+{% block content %}
+<style>
+    .insight-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .insight-card { background: #12122a; border: 1px solid #1e1e3a; border-radius: 8px; padding: 20px; display: flex; gap: 14px; align-items: flex-start; transition: all 0.2s ease; }
+    .insight-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
+    .insight-icon { font-size: 20px; min-width: 28px; text-align: center; padding-top: 2px; }
+    .insight-icon.ic-shared { color: #ffa502; }
+    .insight-icon.ic-critical { color: #e94560; }
+    .insight-icon.ic-isolated { color: #4ecdc4; }
+    .insight-icon.ic-concentration { color: #45b7d1; }
+    .insight-text { font-size: 13px; line-height: 1.6; color: #aaa; }
+    .insight-text strong { color: #fff; }
+    .insight-text .highlight { color: #ffa502; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+</style>
+
+<div class="page-header">
+    <h1>Architecture Risk</h1>
+    <p>Cross-service structural analysis — shared dependencies, concentration risk, and blast radius</p>
+</div>
+
+{% if insights %}
+<div class="insight-cards">
+    {% if insights.most_shared %}
+    <div class="insight-card">
+        <div class="insight-icon ic-shared"><i class="fa-solid fa-link"></i></div>
+        <div class="insight-text">
+            <strong>{{ insights.most_shared.name }}</strong> appears in
+            <span class="highlight">{{ insights.most_shared.count }} of {{ insights.total_services }}</span> services.
+            A CVE in this dependency affects {{ insights.most_shared.pct }}% of your portfolio.
+        </div>
+    </div>
+    {% endif %}
+
+    {% if insights.most_central %}
+    <div class="insight-card">
+        <div class="insight-icon ic-critical"><i class="fa-solid fa-bullseye"></i></div>
+        <div class="insight-text">
+            <strong>Most structurally critical:</strong>
+            <span class="highlight">{{ insights.most_central.name }}</span>
+            has the highest betweenness centrality across your portfolio — it sits on more dependency paths than any other component.
+        </div>
+    </div>
+    {% endif %}
+
+    {% if insights.least_connected %}
+    <div class="insight-card">
+        <div class="insight-icon ic-isolated"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="insight-text">
+            <strong>{{ insights.least_connected.name }}</strong> has the fewest shared dependencies —
+            lowest blast radius in your portfolio. {{ insights.least_connected.shared }} shared dep{{ 's' if insights.least_connected.shared != 1 }}.
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="insight-card">
+        <div class="insight-icon ic-concentration"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="insight-text">
+            <strong>Supply chain concentration:</strong>
+            <span class="highlight">{{ insights.shared_count }}</span> dependencies are shared across multiple services
+            ({{ insights.concentration_pct }}% of total). {% if insights.concentration_pct > 30 %}Consider diversification to reduce correlated risk.{% else %}Healthy diversification level.{% endif %}
+        </div>
+    </div>
+</div>
+
+{% if insights.shared_deps %}
+<div class="section">
+    <div class="section-title">Shared Dependencies</div>
+    <table>
+        <thead><tr><th>Dependency</th><th>Services</th><th>Service Count</th></tr></thead>
+        <tbody>
+        {% for dep in insights.shared_deps %}
+        <tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ dep.name }}</td>
+            <td>{{ dep.services | join(', ') }}</td>
+            <td style="text-align:center;">
+                <span style="background:{% if dep.count >= insights.total_services %}#e9456030{% elif dep.count >= 2 %}#ffa50230{% else %}#1e1e3a{% endif %};padding:3px 10px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;">{{ dep.count }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% else %}
+<div class="section" style="text-align:center;padding:48px;color:#888;">
+    <p>Index at least 2 services to see cross-service architecture analysis.</p>
+    <a href="/dashboard/upload" style="color:#4ecdc4;">Upload an SBOM</a>
+</div>
+{% endif %}
+
+<div class="section">
+    <div class="section-title"><i class="fa-solid fa-diagram-project"></i> Portfolio Dependency Graph</div>
+    <div id="arch-graph" style="height: 500px; border-radius: 6px; background: #0a0a1a;"></div>
+    <p style="font-size: 11px; color: #555; margin-top: 8px;">
+        <span style="color: #e94560;">&#9679;</span> Vulnerable
+        <span style="margin-left: 12px; color: #ffa502;">&#9670;</span> Service
+        <span style="margin-left: 12px; color: #45b7d1;">&#9679;</span> Shared dependency
+        <span style="margin-left: 12px; color: #2a5a6a;">&#9679;</span> Single-service dependency
+    </p>
+</div>
+
+<script>
+fetch('/dashboard/architecture/graph')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.nodes.length === 0) return;
+        var container = document.getElementById('arch-graph');
+        new vis.Network(container, {
+            nodes: new vis.DataSet(data.nodes),
+            edges: new vis.DataSet(data.edges)
+        }, {
+            physics: {
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: { gravitationalConstant: -40, springLength: 120, springConstant: 0.04 },
+                stabilization: { iterations: 150 }
+            },
+            nodes: {
+                font: { size: 11, face: 'Inter', color: '#e0e0e0' },
+                borderWidth: 1,
+                shadow: { enabled: true, size: 5, color: 'rgba(0,0,0,0.3)' }
+            },
+            edges: {
+                smooth: { type: 'continuous' },
+                width: 1
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100
+            }
+        });
+    });
+</script>
+{% endblock %}

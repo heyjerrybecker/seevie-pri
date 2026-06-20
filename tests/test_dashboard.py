@@ -59,6 +59,13 @@ def test_dashboard_upload(tmp_path):
     assert "Upload" in resp.text
 
 
+def test_dashboard_architecture(tmp_path):
+    client = _make_client(tmp_path)
+    resp = client.get("/dashboard/architecture")
+    assert resp.status_code == 200
+    assert "Architecture" in resp.text
+
+
 @patch("seevie_pri.stages.match.httpx")
 def test_overview_with_data(mock_httpx, tmp_path):
     mock_post = MagicMock()

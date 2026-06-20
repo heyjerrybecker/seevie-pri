@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import networkx as nx
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -27,6 +29,109 @@ from seevie_pri.stages.score import score
 templates_dir = Path(__file__).parent / "templates"
 
 
+def _compute_architecture_insights(sboms):
+    if len(sboms) < 2:
+        return None
+
+    comp_services = {}  # comp_name -> set of service names
+    service_comp_counts = {}  # service_name -> set of comp_names
+
+    for sbom in sboms:
+        sbom_path = Path(sbom["sbom_path"])
+        if not sbom_path.exists():
+            continue
+        try:
+            ctx = TriageContext(sbom_path=sbom_path)
+            ctx = parse(ctx)
+        except Exception:
+            continue
+
+        service_comps = set()
+        for node_id in ctx.graph.nodes:
+            comp = ctx.graph.nodes[node_id].get("component")
+            if comp:
+                comp_services.setdefault(comp.name, set()).add(sbom["name"])
+                service_comps.add(comp.name)
+        service_comp_counts[sbom["name"]] = service_comps
+
+    total_services = len(sboms)
+    total_unique_deps = len(comp_services)
+
+    # Shared deps (in 2+ services)
+    shared = {name: svcs for name, svcs in comp_services.items() if len(svcs) >= 2}
+    shared_sorted = sorted(shared.items(), key=lambda x: len(x[1]), reverse=True)
+
+    # Most shared
+    most_shared = None
+    if shared_sorted:
+        name, svcs = shared_sorted[0]
+        short_name = name.split(":")[-1] if ":" in name else name
+        most_shared = {
+            "name": short_name,
+            "full_name": name,
+            "count": len(svcs),
+            "pct": round(len(svcs) / total_services * 100),
+        }
+
+    # Most structurally critical (highest betweenness across all graphs)
+    merged = nx.DiGraph()
+    for sbom in sboms:
+        sbom_path = Path(sbom["sbom_path"])
+        if not sbom_path.exists():
+            continue
+        try:
+            ctx = TriageContext(sbom_path=sbom_path)
+            ctx = parse(ctx)
+        except Exception:
+            continue
+        for node_id in ctx.graph.nodes:
+            comp = ctx.graph.nodes[node_id].get("component")
+            if comp:
+                merged.add_node(comp.name)
+        for u, v in ctx.graph.edges:
+            u_comp = ctx.graph.nodes[u].get("component")
+            v_comp = ctx.graph.nodes[v].get("component")
+            if u_comp and v_comp:
+                merged.add_edge(u_comp.name, v_comp.name)
+
+    most_central = None
+    if len(merged) > 2:
+        bc = nx.betweenness_centrality(merged)
+        top = max(bc, key=bc.get)
+        short_name = top.split(":")[-1] if ":" in top else top
+        most_central = {"name": short_name, "full_name": top, "score": round(bc[top], 4)}
+
+    # Least connected service
+    least_connected = None
+    if service_comp_counts:
+        least = min(
+            service_comp_counts.items(),
+            key=lambda x: sum(1 for c in x[1] if c in shared),
+        )
+        least_connected = {
+            "name": least[0],
+            "shared": sum(1 for c in least[1] if c in shared),
+        }
+
+    concentration_pct = round(len(shared) / max(total_unique_deps, 1) * 100)
+
+    shared_deps = [
+        {"name": name.split(":")[-1] if ":" in name else name, "full_name": name,
+         "services": sorted(svcs), "count": len(svcs)}
+        for name, svcs in shared_sorted[:15]
+    ]
+
+    return {
+        "total_services": total_services,
+        "most_shared": most_shared,
+        "most_central": most_central,
+        "least_connected": least_connected,
+        "shared_count": len(shared),
+        "concentration_pct": concentration_pct,
+        "shared_deps": shared_deps,
+    }
+
+
 def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
     router = APIRouter(prefix="/dashboard")
     templates = Jinja2Templates(directory=str(templates_dir))
@@ -46,6 +151,103 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
             "active_page": "services",
             "sboms": sboms,
         })
+
+    @router.get("/architecture", response_class=HTMLResponse)
+    def architecture(request: Request):
+        sboms = list_sboms(conn)
+        insights = _compute_architecture_insights(sboms)
+        return templates.TemplateResponse(request, "architecture.html", {
+            "active_page": "architecture",
+            "insights": insights,
+        })
+
+    @router.get("/architecture/graph")
+    def architecture_graph():
+        sboms = list_sboms(conn)
+        all_nodes = []
+        all_edges = []
+        comp_services = {}  # comp_name -> set of service names
+        findings_list = get_findings(conn)
+        vuln_components = {f["component"] for f in findings_list}
+
+        for sbom in sboms:
+            sbom_path = Path(sbom["sbom_path"])
+            if not sbom_path.exists():
+                continue
+            ctx = TriageContext(sbom_path=sbom_path)
+            try:
+                ctx = parse(ctx)
+            except Exception:
+                continue
+
+            prefix = sbom["name"]
+
+            # Add service node (diamond shape)
+            all_nodes.append({
+                "id": f"svc:{prefix}",
+                "label": prefix,
+                "title": f"{prefix} ({sbom['ecosystem']})",
+                "shape": "diamond",
+                "color": "#ffa502",
+                "size": 20,
+                "font": {"color": "#fff", "size": 13, "bold": True},
+                "borderWidth": 2,
+            })
+
+            for node_id in ctx.graph.nodes:
+                comp = ctx.graph.nodes[node_id].get("component")
+                if not comp:
+                    continue
+                comp_services.setdefault(comp.name, set()).add(prefix)
+
+                node_key = f"{prefix}:{node_id}"
+                is_vuln = comp.name in vuln_components
+
+                all_nodes.append({
+                    "id": node_key,
+                    "label": comp.name.split(":")[-1] if ":" in comp.name else comp.name,
+                    "title": f"{comp.name}@{comp.version} (in: {prefix})",
+                    "shape": "dot",
+                    "color": "#e94560" if is_vuln else "#2a5a6a",
+                    "size": 8,
+                    "font": {"color": "#e0e0e0", "size": 9},
+                    "borderWidth": 1,
+                })
+
+                if comp.direct:
+                    all_edges.append({
+                        "from": f"svc:{prefix}",
+                        "to": node_key,
+                        "arrows": "to",
+                        "color": {"color": "#1e1e3a"},
+                        "width": 1,
+                    })
+
+            for u, v in ctx.graph.edges:
+                all_edges.append({
+                    "from": f"{prefix}:{u}",
+                    "to": f"{prefix}:{v}",
+                    "arrows": "to",
+                    "color": {"color": "#1e1e3a"},
+                    "width": 1,
+                })
+
+        # Second pass: update shared dep colors/sizes based on service count
+        for node in all_nodes:
+            if node.get("shape") == "diamond":
+                continue
+            # Extract comp name from title
+            comp_name = node["title"].split("@")[0] if "@" in node.get("title", "") else ""
+            svc_count = len(comp_services.get(comp_name, set()))
+            if node["color"] != "#e94560":  # don't override vulnerable
+                if svc_count >= 3:
+                    node["color"] = "#ffa502"
+                    node["size"] = 14
+                elif svc_count >= 2:
+                    node["color"] = "#45b7d1"
+                    node["size"] = 11
+
+        return {"nodes": all_nodes, "edges": all_edges}
 
     @router.get("/services/{sbom_id}", response_class=HTMLResponse)
     def service_detail(request: Request, sbom_id: str):
