@@ -22,6 +22,7 @@ class CVEMatch:
     affected_component: Component
     fixed_version: str | None = None
     source: str = "osv"
+    affected_symbols: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -30,6 +31,8 @@ class ScoredMatch:
     topology_score: float = 0.0
     compatibility_score: float = 0.0
     combined_score: float = 0.0
+    exploitability: float = 0.5
+    exploitability_detail: str = ""
 
 
 @dataclass

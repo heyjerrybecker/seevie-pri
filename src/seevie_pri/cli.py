@@ -40,6 +40,7 @@ def main():
     triage_cmd.add_argument("--threshold", type=float, default=0.0)
     triage_cmd.add_argument("--no-nvd", action="store_true")
     triage_cmd.add_argument("--verbose", action="store_true")
+    triage_cmd.add_argument("--repo", type=Path, help="Source code path for reachability analysis")
 
     # index — store SBOM in database
     index_cmd = sub.add_parser("index", help="Index an SBOM for persistent monitoring")
@@ -54,6 +55,7 @@ def main():
     rescan_cmd.add_argument("--no-nvd", action="store_true")
     rescan_cmd.add_argument("--threshold", type=float, default=0.0)
     rescan_cmd.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    rescan_cmd.add_argument("--repo", type=Path, help="Source code path for reachability analysis")
 
     # serve — start REST API
     serve_cmd = sub.add_parser("serve", help="Start the REST API server")
@@ -91,6 +93,7 @@ def _cmd_triage(args):
             "threshold": args.threshold,
             "no_nvd": args.no_nvd,
             "verbose": args.verbose,
+            "repo": str(args.repo) if args.repo else None,
         },
     )
 
@@ -158,6 +161,7 @@ def _cmd_rescan(args):
             options={
                 "no_nvd": args.no_nvd,
                 "threshold": args.threshold,
+                "repo": str(args.repo) if args.repo else None,
             },
         )
 

@@ -69,6 +69,7 @@ def osv_match(components: list[Component]) -> list[CVEMatch]:
             continue
         severity = _extract_severity(detail)
         fixed_version = _extract_fixed_version(detail)
+        affected_symbols = _extract_affected_symbols(detail)
         for comp in vuln_to_comps[vid]:
             matches.append(CVEMatch(
                 cve_id=vid,
@@ -76,6 +77,7 @@ def osv_match(components: list[Component]) -> list[CVEMatch]:
                 affected_component=comp,
                 fixed_version=fixed_version,
                 source="osv",
+                affected_symbols=affected_symbols,
             ))
 
     return matches
@@ -113,6 +115,17 @@ def _extract_fixed_version(detail: dict) -> str | None:
                     if "fixed" in event:
                         return event["fixed"]
     return None
+
+
+def _extract_affected_symbols(detail: dict) -> list[str]:
+    symbols = []
+    for affected in detail.get("affected", []):
+        es = affected.get("ecosystem_specific", {})
+        if not es:
+            continue
+        for imp in es.get("imports", []):
+            symbols.extend(imp.get("symbols", []))
+    return symbols
 
 
 def nvd_match(

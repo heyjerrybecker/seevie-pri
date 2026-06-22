@@ -11,7 +11,8 @@ def rank(ctx: TriageContext) -> TriageContext:
     rankings = []
     for i, scored in enumerate(filtered, 1):
         upgrade_path = _determine_upgrade_path(scored.match)
-        action = _determine_action(scored.combined_score, upgrade_path)
+        action = _determine_action(scored.combined_score, upgrade_path,
+                                   scored.exploitability)
         rankings.append(RankedFinding(
             rank=i,
             scored=scored,
@@ -31,13 +32,20 @@ def _determine_upgrade_path(match: CVEMatch) -> str:
     return "transitive"
 
 
-def _determine_action(combined_score: float, upgrade_path: str) -> str:
+def _determine_action(combined_score: float, upgrade_path: str,
+                      exploitability: float = 0.5) -> str:
+    suffix = ""
+    if exploitability < 0.3:
+        suffix = " — LIKELY UNREACHABLE"
+    elif exploitability >= 0.8 and exploitability != 0.5:
+        suffix = " — REACHABLE"
+
     if combined_score >= 0.7:
         if upgrade_path == "no fix available":
-            return "INVESTIGATE — NO FIX AVAILABLE"
+            return "INVESTIGATE — NO FIX AVAILABLE" + suffix
         if upgrade_path == "transitive":
-            return "MANUAL UPGRADE REQUIRED"
-        return "UPGRADE AVAILABLE"
+            return "MANUAL UPGRADE REQUIRED" + suffix
+        return "UPGRADE AVAILABLE" + suffix
     if combined_score >= 0.3:
-        return "PRIORITIZE"
-    return "SCHEDULE FOR NEXT SPRINT"
+        return "PRIORITIZE" + suffix
+    return "SCHEDULE FOR NEXT SPRINT" + suffix

@@ -105,5 +105,5 @@ def test_score_stage_populates_context():
     assert scored.topology_score > 0
     assert scored.compatibility_score == 0.8  # direct + fix
     assert scored.combined_score == round(
-        scored.topology_score * (1 - 0.8), 4
+        scored.topology_score * (1 - 0.8) * 0.7, 4
     )

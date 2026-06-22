@@ -43,13 +43,19 @@ def score(ctx: TriageContext) -> TriageContext:
         else:
             compat = score_version_compatibility(m)
 
-        combined = topo * (1 - compat)
+        repo_path = ctx.options.get("repo") if ctx.options else None
+        exploit, exploit_detail = score_exploitability(
+            m, ctx.graph, vuln_nodes, ctx.root_node, repo_path,
+        )
+        combined = topo * (1 - compat) * exploit
 
         scored.append(ScoredMatch(
             match=m,
             topology_score=round(topo, 4),
             compatibility_score=round(compat, 4),
             combined_score=round(combined, 4),
+            exploitability=round(exploit, 2),
+            exploitability_detail=exploit_detail,
         ))
 
     ctx.scores = scored
@@ -132,6 +138,63 @@ def score_version_compatibility(match: CVEMatch) -> float:
     if match.affected_component.direct:
         return 0.8
     return 0.3
+
+
+def score_exploitability(match: CVEMatch, graph: nx.DiGraph,
+                         vuln_nodes: list[str], root: str,
+                         repo_path: str | None = None) -> tuple[float, str]:
+    if match.affected_symbols:
+        if repo_path:
+            found = _check_symbols_in_repo(match.affected_symbols, repo_path,
+                                           match.affected_component.ecosystem)
+            if found:
+                return 1.0, f"Confirmed: {', '.join(found[:3])} found in source"
+            return 0.1, f"Symbols {', '.join(match.affected_symbols[:3])} not found in source"
+        return 0.5, f"Affected symbols known ({', '.join(match.affected_symbols[:3])}) but no source provided (use --repo)"
+
+    if match.affected_component.direct:
+        return 0.7, "Heuristic: direct dependency — likely reachable"
+
+    for vn in vuln_nodes:
+        try:
+            depth = nx.shortest_path_length(graph, root, vn)
+        except nx.NetworkXNoPath:
+            depth = 99
+        if depth <= 2:
+            return 0.5, f"Heuristic: transitive at depth {depth}"
+        return 0.3, f"Heuristic: deep transitive at depth {depth}"
+
+    return 0.5, "Heuristic: exploitability unknown"
+
+
+def _check_symbols_in_repo(symbols: list[str], repo_path: str,
+                           ecosystem: str) -> list[str]:
+    import subprocess
+    found = []
+    path = repo_path
+
+    if ecosystem == "golang":
+        glob = "*.go"
+    elif ecosystem == "maven":
+        glob = "*.java"
+    elif ecosystem == "pypi":
+        glob = "*.py"
+    elif ecosystem == "npm":
+        glob = "*.js"
+    else:
+        glob = "*"
+
+    for sym in symbols[:10]:
+        try:
+            result = subprocess.run(
+                ["grep", "-rl", sym, "--include", glob, path],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                found.append(sym)
+        except Exception:
+            continue
+    return found
 
 
 def score_version_compatibility_with_constraints(

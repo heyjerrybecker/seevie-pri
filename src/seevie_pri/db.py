@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS findings (
     action TEXT NOT NULL DEFAULT '',
     epss_score REAL NOT NULL DEFAULT 0,
     financial_risk REAL NOT NULL DEFAULT 0,
+    exploitability REAL NOT NULL DEFAULT 0.5,
+    exploitability_detail TEXT NOT NULL DEFAULT '',
     scanned_at TEXT NOT NULL
 );
 """
@@ -59,14 +61,15 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
-    for col, default in [
-        ("business_value", "1000000"),
-        ("epss_score", "0"),
-        ("financial_risk", "0"),
+    for col, table, col_type, default in [
+        ("business_value", "sboms", "REAL", "1000000"),
+        ("epss_score", "findings", "REAL", "0"),
+        ("financial_risk", "findings", "REAL", "0"),
+        ("exploitability", "findings", "REAL", "0.5"),
+        ("exploitability_detail", "findings", "TEXT", "''"),
     ]:
         try:
-            table = "sboms" if col == "business_value" else "findings"
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} REAL NOT NULL DEFAULT {default}")
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type} NOT NULL DEFAULT {default}")
         except sqlite3.OperationalError:
             pass
     return conn
@@ -140,8 +143,9 @@ def store_findings(conn: sqlite3.Connection, sbom_id: str,
     conn.executemany(
         "INSERT INTO findings (sbom_id, cve_id, severity, component, version, "
         "fixed_version, topology_score, compatibility_score, combined_score, "
-        "upgrade_path, action, epss_score, financial_risk, scanned_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "upgrade_path, action, epss_score, financial_risk, "
+        "exploitability, exploitability_detail, scanned_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
             (
                 sbom_id,
@@ -160,6 +164,8 @@ def store_findings(conn: sqlite3.Connection, sbom_id: str,
                 round(epss_scores.get(f.scored.match.cve_id,
                                       severity_defaults.get(f.scored.match.severity, 0.1))
                       * f.scored.combined_score * business_value, 2),
+                f.scored.exploitability,
+                f.scored.exploitability_detail,
                 now,
             )
             for f in findings
