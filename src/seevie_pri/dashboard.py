@@ -343,17 +343,22 @@ def create_dashboard_router(conn: sqlite3.Connection) -> APIRouter:
             sev = f["severity"].lower()
             br = f.get("blast_radius", 1)
             br_bg = "#e9456030" if br >= 3 else "#ffa50230" if br >= 2 else "#1e1e3a"
+            ex = f.get("exploitability", 0.5)
+            ex_cls = "critical" if ex >= 0.7 else "medium" if ex >= 0.3 else "low"
+            ex_lbl = "REACHABLE" if ex >= 0.7 else "POSSIBLE" if ex >= 0.3 else "UNLIKELY"
+            ex_detail = f.get("exploitability_detail", "")
             rows += (
                 f'<tr><td style="font-family:\'JetBrains Mono\',monospace;font-size:12px;">{f["cve_id"]}</td>'
                 f'<td><span class="badge {sev}">{f["severity"]}</span></td>'
+                f'<td style="text-align:center;" title="{ex_detail}"><span class="badge {ex_cls}">{ex_lbl}</span></td>'
                 f'<td style="text-align:center;"><span style="background:{br_bg};padding:3px 10px;border-radius:10px;font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:600;">{br} svc{"s" if br != 1 else ""}</span></td>'
+                f'<td style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#ffa502;">${f.get("financial_risk", 0):,.0f}</td>'
                 f'<td>{f["component"]}</td>'
                 f'<td>{f["sbom_name"]}</td>'
-                f'<td>{f["combined_score"]:.2f}</td>'
                 f'<td>{f["fixed_version"] or "—"}</td>'
                 f'<td>{f["action"]}</td></tr>'
             )
-        return HTMLResponse(rows if rows else '<tr><td colspan="8" style="text-align:center;color:#888;padding:24px;">No findings match the current filters.</td></tr>')
+        return HTMLResponse(rows if rows else '<tr><td colspan="9" style="text-align:center;color:#888;padding:24px;">No findings match the current filters.</td></tr>')
 
     @router.post("/_rescan", response_class=HTMLResponse)
     def rescan_partial():

@@ -24,12 +24,13 @@
            hx-include="[name='severity']">
 </div>
 <table>
-    <thead><tr><th>CVE</th><th>Severity</th><th>Blast Radius</th><th>$ Exposure</th><th>Component</th><th>Service</th><th>Fix</th><th>Action</th></tr></thead>
+    <thead><tr><th>CVE</th><th>Severity</th><th>Reachability</th><th>Blast Radius</th><th>$ Exposure</th><th>Component</th><th>Service</th><th>Fix</th><th>Action</th></tr></thead>
     <tbody id="findings-body">
     {% for f in findings %}
     <tr>
         <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ f.cve_id }}</td>
         <td><span class="badge {{ f.severity|lower }}">{{ f.severity }}</span></td>
+        <td style="text-align:center;" title="{{ f.exploitability_detail }}"><span class="badge {% if f.exploitability >= 0.7 %}critical{% elif f.exploitability >= 0.3 %}medium{% else %}low{% endif %}">{% if f.exploitability >= 0.7 %}REACHABLE{% elif f.exploitability >= 0.3 %}POSSIBLE{% else %}UNLIKELY{% endif %}</span></td>
         <td style="text-align:center;"><span style="background:{% if f.blast_radius >= 3 %}#e9456030{% elif f.blast_radius >= 2 %}#ffa50230{% else %}#1e1e3a{% endif %};padding:3px 10px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;">{{ f.blast_radius }} svc{{ 's' if f.blast_radius != 1 }}</span></td>
         <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#ffa502;">${{ "{:,.0f}".format(f.financial_risk) }}</td>
         <td>{{ f.component }}</td>
@@ -38,7 +39,7 @@
         <td>{{ f.action }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="8" class="empty-state">No findings. Index SBOMs and run a rescan.</td></tr>
+    <tr><td colspan="9" class="empty-state">No findings. Index SBOMs and run a rescan.</td></tr>
     {% endfor %}
     </tbody>
 </table>
