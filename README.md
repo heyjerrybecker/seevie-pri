@@ -12,9 +12,11 @@ SeeviePri applies **graph topology analysis** to your dependency graphs, produci
 
 **Version Compatibility** — assesses upgrade path difficulty based on whether the vulnerable component is a direct or transitive dependency and whether a fix version is available.
 
+**Exploitability / Reachability** — not all CVEs in your dependency tree are actually reachable from your code. For Go projects, SeeviePri checks OSV's affected function names against your source code (`--repo` flag) to confirm or rule out reachability. For other ecosystems, a heuristic based on dependency depth and directness estimates exploitability. Unreachable findings drop 90% in priority.
+
 **Financial Risk** — combines EPSS exploit probability (from FIRST.org) with the topology risk score and a per-service business value to estimate dollar exposure: `financial_risk = EPSS × topology_risk × business_value`
 
-**Combined risk score:** `risk = topology_score × (1 - compatibility_score)`
+**Combined risk score:** `risk = topology_score × (1 - compatibility_score) × exploitability`
 
 ## Quick Start
 
@@ -23,6 +25,9 @@ pip install -e .
 
 # One-shot triage
 seevie-pri triage --sbom bom.json
+
+# With reachability analysis (Go projects)
+seevie-pri triage --sbom bom.json --repo /path/to/source
 
 # Index services for persistent monitoring
 seevie-pri index --sbom services/payment-api/bom.json --name payment-api --business-value 5000000
@@ -41,11 +46,13 @@ seevie-pri serve --port 8080
 - **4 ecosystems** — Maven, npm, PyPI, Go
 - **2 SBOM formats** — CycloneDX (JSON + XML), SPDX (JSON)
 - **CVE matching** — OSV (primary), NVD (fallback), offline mode for air-gapped environments
-- **Financial risk quantification** — EPSS exploit probability × topology risk × business value per service
+- **Exploitability analysis** — Go: real reachability via OSV affected symbols + source code grep. Other ecosystems: depth-based heuristic. Unreachable CVEs drop 90% in priority.
+- **Financial risk quantification** — EPSS exploit probability × topology risk × exploitability × business value per service
 - **Blast radius** — cross-service impact analysis (how many services does each CVE affect?)
+- **Architecture risk visualization** — cross-service dependency graph with structural insights, shared dependency analysis, and click-to-detail impact panel
 - **Persistent indexing** — SQLite storage, index once, rescan on demand, SBOM upsert on re-index
 - **REST API** — 5 endpoints for programmatic access
-- **Web dashboard** — Security Pro dark theme with Chart.js severity/service charts, executive summary banner, interactive vis.js dependency graph, editable business values, findings filters, and rescan button
+- **Web dashboard** — Security Pro dark theme with Chart.js severity/service charts, executive summary banner, interactive vis.js dependency graphs, editable business values, reachability badges, and rescan button
 - **CI-friendly** — exit code 1 when high-risk findings are present
 
 ## CLI Commands
@@ -65,8 +72,9 @@ The web dashboard (`seevie-pri serve`) provides:
 - **Summary cards** — total findings, high/critical count, services indexed, estimated exposure
 - **Severity donut chart** — interactive breakdown of findings by severity
 - **Risk by service bar chart** — visual comparison across services
-- **Findings table** — sortable by blast radius and financial exposure, filterable by severity
-- **Service detail** — interactive dependency graph (vulnerable nodes in red) + per-service findings
+- **Findings table** — sortable by blast radius and financial exposure, filterable by severity, reachability badges (REACHABLE / POSSIBLE / UNLIKELY)
+- **Service detail** — interactive dependency graph (vulnerable nodes in red) + per-service findings with reachability
+- **Architecture risk** — cross-service dependency graph with narrative insight cards and click-to-detail impact analysis
 - **SBOM upload** — drag-and-drop indexing from the browser
 - **Editable business values** — set dollar value per service directly on the services page
 - **Rescan button** — re-triage all services with spinning animation and auto-refresh
